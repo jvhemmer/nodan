@@ -16,6 +16,7 @@ class Port(QGraphicsObject):
 
     def __init__(self, parent: Node, kind: str, x: float, y: float, radius=6):
         super().__init__(parent)
+        self.hit_radius = 5
         self.node = parent
         self.kind = kind
         self.radius = radius
@@ -25,14 +26,25 @@ class Port(QGraphicsObject):
 
         self.setAcceptHoverEvents(True)
 
+    def calculate_hit_radius(self) -> float:
+        return self.radius + 5 + 2*len(self.connections)
+
     def boundingRect(self):
-        r = self.radius
+        r = self.calculate_hit_radius()
         return QRectF(-r, -r, r * 2, r * 2)
+
+    def shape(self):
+        path = QPainterPath()
+        r = self.calculate_hit_radius() if self.hovered else self.radius
+        path.addEllipse(-r, -r, r * 2, r * 2)
+        return path
 
     def paint(self, painter, option, widget=None):
         painter.setBrush(QBrush(QColor("#d08770") if self.kind == "input" else QColor("#a3be8c")))
         painter.setPen(QPen(QColor("#2e3440"), 2))
-        painter.drawEllipse(self.boundingRect())
+
+        r = self.radius
+        painter.drawEllipse(-r, -r, r * 2, r * 2)
 
     def scene_center(self):
         """Returns the center of the Port in Scene coordinates."""
@@ -107,13 +119,17 @@ class Port(QGraphicsObject):
         event.accept()
 
     def hoverEnterEvent(self, event):
+        self.prepareGeometryChange()
         self.hovered = True
         self.setScale(1.25)
         self.refresh_connections()
+        self.update()
         super().hoverEnterEvent(event)
 
     def hoverLeaveEvent(self, event):
+        self.prepareGeometryChange()
         self.hovered = False
         self.setScale(1.0)
         self.refresh_connections()
+        self.update()
         super().hoverLeaveEvent(event)
