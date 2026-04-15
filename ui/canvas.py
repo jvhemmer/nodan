@@ -1,5 +1,5 @@
 from PySide6.QtCore import QPoint, Qt, QPointF, QObject
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QMouseEvent, QCursor
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu
 
 from ui.node import Node
@@ -78,6 +78,16 @@ class Canvas(QGraphicsView):
                 self.pending_connection.delete()
                 self.pending_connection = None
                 self.pending_source_port = None
+                event.accept()
+
+        if self.pending_connection is None:
+            scene_pos = self.mapToScene(event.pos())
+            items = self.scene().items(scene_pos)
+            for item in items:
+                if isinstance(item, Connection):
+                    self.detach_connection(item)
+                    event.accept()
+                    return
 
         super().mousePressEvent(event)
 
@@ -106,9 +116,10 @@ class Canvas(QGraphicsView):
         items_under_cursor = self.scene().items(scene_pos)
         self.handle_port_or_connection_hover(items_under_cursor)
 
-
-
         super().mouseMoveEvent(event)
+
+    def get_cursor_pos(self) -> QPointF:
+        return self.mapToScene(self.mapFromGlobal(QCursor.pos()))
 
     def handle_port_or_connection_hover(self, items):
         # TODO: Make Node, Port and Connection inherit from QGraphicsObject and customize hover behavior
@@ -155,16 +166,23 @@ class Canvas(QGraphicsView):
         source = self.pending_source_port
 
         connection.set_target_port(target)
+        connection.tip.clicked.connect(self.detach_connection)
         source.add_connection(connection)
         target.add_connection(connection)
         # print(f"Connected to {target.parent.label.text()}")
         self.clear_pending_connection()
+
+    def detach_connection(self, connection: Connection):
+        source = connection.source
+        connection.delete()
+        self.start_pending_connection(source)
 
     def start_pending_connection(self, port: Port):
         # print(f"Started connection from {port.parent.label.text()}")
         self.pending_source_port = port
         self.pending_connection = Connection(port)
         self.scene().addItem(self.pending_connection)
+        self.pending_connection.set_drag_pos(self.get_cursor_pos())
 
     def clear_pending_connection(self):
         self.pending_connection = None
@@ -172,7 +190,7 @@ class Canvas(QGraphicsView):
 
     def cancel_pending_connection(self) -> None:
         if self.pending_connection is not None:
-            # print(f"Cancelled connection from {self.pending_connection.source.parent.label.text()}")
+            # print(f"Canceled connection from {self.pending_connection.source.parent.label.text()}")
             self.scene().removeItem(self.pending_connection)
             self.clear_pending_connection()
 
