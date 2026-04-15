@@ -60,10 +60,7 @@ class Canvas(QGraphicsView):
         event.accept()
         return
 
-
     def mousePressEvent(self, event):
-
-
         # Panning with MMB
         if event.button() == Qt.MouseButton.MiddleButton:
             self._is_panning = True
@@ -72,6 +69,12 @@ class Canvas(QGraphicsView):
             event.accept()
             return
 
+        if self.pending_connection is not None:
+            if self.itemAt(event.pos()) is self.pending_connection:
+                self.pending_connection.delete()
+                self.pending_connection = None
+                self.pending_source_port = None
+
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -79,6 +82,7 @@ class Canvas(QGraphicsView):
         if self.pending_connection is not None:
             scene_pos = self.mapToScene(event.pos())
             self.pending_connection.set_drag_pos(scene_pos)
+            event.accept()
 
         # Panning
         if self._is_panning:
