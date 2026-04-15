@@ -3,36 +3,47 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ui.port import Port
 
-from PySide6.QtCore import QPointF, QPoint, Qt
+from PySide6.QtCore import QPointF, QPoint, Qt, QRectF, Signal
 from PySide6.QtGui import QBrush, QColor, QPen, QPainterPath
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsPathItem, QGraphicsEllipseItem, \
-    QGraphicsItem
+    QGraphicsItem, QGraphicsObject
 
 import math
 
-class ConnectionTip(QGraphicsEllipseItem):
-    def __init__(self, parent):
-        self.connection = parent
-        radius = self.connection.thickness
-        super().__init__(-radius, -radius, radius*2, radius*2, parent)
+class ConnectionTip(QGraphicsObject):
+    clicked = Signal(object)
+    def __init__(self, parent: Connection):
+        super().__init__(parent)
 
+        self.connection = parent
+        self.radius = self.connection.thickness
         self.hovered = False
 
-        self.setPen(QPen(self.connection.color, self.connection.thickness))
-        self.setBrush(self.connection.color)
-        self.setZValue(1000)
-
+        self.setZValue(100)
         self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
         self.setAcceptHoverEvents(True)
+
+    def boundingRect(self):
+        r = self.radius
+        return QRectF(-r, -r, r * 2, r * 2)
+
+    def paint(self, painter, option, widget=None):
+        painter.setPen(QPen(self.connection.color, self.connection.thickness))
+        painter.setBrush(self.connection.color)
+        painter.drawEllipse(self.boundingRect())
+
+    def mousePressEvent(self, event):
+        self.clicked.emit(self.connection)
+        print("emitted")
+        event.accept()
 
     def set_hovered(self, hovered: bool):
         if self.hovered == hovered:
             return
 
         self.hovered = hovered
-        self.setScale(2 if hovered else 1.0)
+        self.setScale(2.0 if hovered else 1.0)
         self.update()
-
 
 class Connection(QGraphicsPathItem):
     def __init__(self, source: Port, target: Port | None=None):
@@ -96,6 +107,7 @@ class Connection(QGraphicsPathItem):
         )
         self.setPath(path)
         self.tip.setPos(end)
+        self.update()
 
     def set_hovered(self, hovered: bool):
         if self.hovered == hovered:
