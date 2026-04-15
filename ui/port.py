@@ -16,7 +16,6 @@ class Port(QGraphicsObject):
 
     def __init__(self, parent: Node, kind: str, x: float, y: float, radius=6):
         super().__init__(parent)
-        self.hit_radius = 5
         self.node = parent
         self.kind = kind
         self.radius = radius
@@ -27,7 +26,7 @@ class Port(QGraphicsObject):
         self.setAcceptHoverEvents(True)
 
     def calculate_hit_radius(self) -> float:
-        return self.radius + 5 + 2*len(self.connections)
+        return self.radius + 10 + 2*len(self.connections)
 
     def boundingRect(self):
         r = self.calculate_hit_radius()
