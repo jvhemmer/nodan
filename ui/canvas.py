@@ -1,8 +1,10 @@
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QPoint, Qt, QPointF
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu
 
-from ui.node import Node, Connection, Port
+from ui.node import Node
+from ui.port import Port
+from ui.connection import Connection
 
 class Scene(QGraphicsScene):
     pass
@@ -39,7 +41,7 @@ class Canvas(QGraphicsView):
         menu = QMenu()
         add_block_action = QAction("Add Node", self)
         menu.addAction(add_block_action)
-        add_block_action.triggered.connect(self.add_block_at_context_pos)
+        add_block_action.triggered.connect(self.add_node_at_context_pos)
         menu.exec(event.globalPos())
 
     # Zooming with Ctrl + Click
@@ -97,7 +99,6 @@ class Canvas(QGraphicsView):
             )
             event.accept()
             return
-
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -106,36 +107,65 @@ class Canvas(QGraphicsView):
             self.setCursor(Qt.CursorShape.ArrowCursor)
             event.accept()
             return
-
         super().mouseReleaseEvent(event)
 
-    def add_block_at_context_pos(self):
+    def add_node(self, pos: QPointF, title="New Node"):
+        node = Node(pos.x(), pos.y(), title=title)
+
+        node.input.clicked.connect(self.handle_port_click)
+        node.output.clicked.connect(self.handle_port_click)
+
+        self.scene().addItem(node)
+
+    def add_node_at_context_pos(self):
         scene_pos = self.mapToScene(self._last_context_pos)
-        block = Node(scene_pos.x(), scene_pos.y(), title="New Node")
-        self.scene().addItem(block)
+        self.add_node(scene_pos)
+
+    def add_pending_connection(self, connection: Connection, target: Port):
+        source = self.pending_source_port
+
+        connection.set_target_port(target)
+        source.add_connection(connection)
+        target.add_connection(connection)
+        # print(f"Connected to {target.parent.label.text()}")
+        self.clear_pending_connection()
+
+    def start_pending_connection(self, port: Port):
+        # print(f"Started connection from {port.parent.label.text()}")
+        self.pending_source_port = port
+        self.pending_connection = Connection(port)
+        self.scene().addItem(self.pending_connection)
+
+    def clear_pending_connection(self):
+        self.pending_connection = None
+        self.pending_source_port = None
+
+    def cancel_pending_connection(self) -> None:
+        if self.pending_connection is not None:
+            # print(f"Cancelled connection from {self.pending_connection.source.parent.label.text()}")
+            self.scene().removeItem(self.pending_connection)
+            self.clear_pending_connection()
 
     def handle_port_click(self, port: Port):
         if self.pending_connection is None:
-            if port.kind != "input":
+            # Start a connection if clicked on an input
+            if port.kind != "output":
                 return
-
-            self.pending_source_port = port
-            self.pending_connection = Connection(port)
-            self.scene().addItem(self.pending_connection)
+            self.start_pending_connection(port)
             return
 
         if port is self.pending_source_port:
-            self.scene().removeItem(self.pending_connection)
-            self.pending_connection = None
-            self.pending_source_port = None
+            # If clicking on the same port, cancel
+            self.cancel_pending_connection()
             return
 
-        if port.kind != "output":
+        if port.kind != "input":
+            # Clicking an output without a pending connection
             return
 
-        self.pending_connection.set_target_port(port)
-        self.pending_source_port.add_connection(self.pending_connection)
-        port.add_connection(self.pending_connection)
+        if self.pending_source_port.is_connected_to(port):
+            # Prevent recreating an existing connection
+            return
 
-        self.pending_connection = None
-        self.pending_source_port = None
+        # Clicking an output with a pending connection
+        self.add_pending_connection(self.pending_connection, port)
