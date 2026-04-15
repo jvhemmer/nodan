@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     from ui.connection import Connection
 
 from PySide6.QtCore import QPointF, QPoint, Signal, QRectF
-from PySide6.QtGui import QBrush, QColor, QPen, QPainterPath
+from PySide6.QtGui import QBrush, QColor, QPen, QPainterPath, QCursor
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsPathItem, QGraphicsEllipseItem, \
     QGraphicsItem, QGraphicsObject
 
@@ -23,10 +23,13 @@ class Port(QGraphicsObject):
         self.hovered = False
         self.setPos(x, y)
 
+        self.setZValue(1)
+
         self.setAcceptHoverEvents(True)
 
     def calculate_hit_radius(self) -> float:
-        return self.radius + 10 + 2*len(self.connections)
+        return self.radius + 15 + 1*len(self.connections)
+        # return self.radius
 
     def boundingRect(self):
         r = self.calculate_hit_radius()
@@ -35,7 +38,9 @@ class Port(QGraphicsObject):
     def shape(self):
         path = QPainterPath()
         r = self.calculate_hit_radius() if self.hovered else self.radius
-        path.addEllipse(-r, -r, r * 2, r * 2)
+        offset = r/2 if self.hovered else 0
+        offset = -offset if self.kind == "input" else offset
+        path.addEllipse(-r, -r+offset, r * 2, r * 2)
         return path
 
     def paint(self, painter, option, widget=None):
@@ -117,18 +122,12 @@ class Port(QGraphicsObject):
         self.clicked.emit(self)
         event.accept()
 
-    def hoverEnterEvent(self, event):
-        self.prepareGeometryChange()
-        self.hovered = True
-        self.setScale(1.25)
-        self.refresh_connections()
-        self.update()
-        super().hoverEnterEvent(event)
+    def set_hovered(self, hovered: bool):
+        if self.hovered == hovered:
+            return
 
-    def hoverLeaveEvent(self, event):
         self.prepareGeometryChange()
-        self.hovered = False
-        self.setScale(1.0)
+        self.hovered = hovered
+        self.setScale(1.25 if hovered else 1.0)
         self.refresh_connections()
         self.update()
-        super().hoverLeaveEvent(event)

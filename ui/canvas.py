@@ -1,10 +1,10 @@
-from PySide6.QtCore import QPoint, Qt, QPointF
+from PySide6.QtCore import QPoint, Qt, QPointF, QObject
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu
 
 from ui.node import Node
 from ui.port import Port
-from ui.connection import Connection
+from ui.connection import Connection, ConnectionTip
 
 class Scene(QGraphicsScene):
     pass
@@ -15,6 +15,7 @@ class Canvas(QGraphicsView):
 
         self.setMouseTracking(True)
 
+        self._hovered_items = set()
         self._is_panning = False
         self._pan_start = QPoint()
         self._zoom = 0
@@ -72,7 +73,8 @@ class Canvas(QGraphicsView):
             return
 
         if self.pending_connection is not None:
-            if self.itemAt(event.pos()) is self.pending_connection:
+            item = self.itemAt(event.pos())
+            if item in (self.pending_connection, self.pending_connection.tip):
                 self.pending_connection.delete()
                 self.pending_connection = None
                 self.pending_source_port = None
@@ -84,7 +86,6 @@ class Canvas(QGraphicsView):
         if self.pending_connection is not None:
             scene_pos = self.mapToScene(event.pos())
             self.pending_connection.set_drag_pos(scene_pos)
-            event.accept()
 
         # Panning
         if self._is_panning:
@@ -99,7 +100,36 @@ class Canvas(QGraphicsView):
             )
             event.accept()
             return
+
+        # Hovering over Ports or ConnectionTips
+        scene_pos = self.mapToScene(event.pos())
+        items_under_cursor = self.scene().items(scene_pos)
+        self.handle_port_or_connection_hover(items_under_cursor)
+
+
+
         super().mouseMoveEvent(event)
+
+    def handle_port_or_connection_hover(self, items):
+        # TODO: Make Node, Port and Connection inherit from QGraphicsObject and customize hover behavior
+        hovered_items = set()
+
+        for item in items:
+            if isinstance(item, Port):
+                hovered_items.add(item)
+            elif isinstance(item, ConnectionTip):
+                if item.connection.target is not None:
+                    hovered_items.add(item.connection.target)
+                    hovered_items.add(item.connection)
+                    hovered_items.add(item)
+
+        for item in self._hovered_items - hovered_items:
+            item.set_hovered(False)
+
+        for item in hovered_items - self._hovered_items:
+            item.set_hovered(True)
+
+        self._hovered_items = hovered_items
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.MiddleButton:
