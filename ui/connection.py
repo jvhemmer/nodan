@@ -4,9 +4,8 @@ if TYPE_CHECKING:
     from ui.port import Port
 
 from PySide6.QtCore import QPointF, QPoint, Qt, QRectF, Signal
-from PySide6.QtGui import QBrush, QColor, QPen, QPainterPath
-from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsPathItem, QGraphicsEllipseItem, \
-    QGraphicsItem, QGraphicsObject
+from PySide6.QtGui import QColor, QPen, QPainterPath
+from PySide6.QtWidgets import QGraphicsPathItem, QGraphicsObject
 
 import math
 
