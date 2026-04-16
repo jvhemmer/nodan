@@ -133,7 +133,7 @@ class Canvas(QGraphicsView):
             item = self.itemAt(event.pos())
             if item is not None:
                 if isinstance(item, Node):
-                    w = NodeEditWindow(self, item)
+                    w = NodeEditWindow(item)
                     w.show()
                     self.node_edit_windows.append(w)
                     event.accept()
