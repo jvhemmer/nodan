@@ -36,6 +36,12 @@ class Canvas(QGraphicsView):
 
     # Right-click -> context menu
     def contextMenuEvent(self, event):
+        item = self.itemAt(event.pos())
+        if item is not None:
+            super().contextMenuEvent(event)
+            if event.isAccepted():
+                return
+
         self._last_context_pos = event.pos()
 
         menu = QMenu()
@@ -125,8 +131,8 @@ class Canvas(QGraphicsView):
     def add_node(self, pos: QPointF, title="New Node"):
         node = Node(self, pos.x(), pos.y(), title=title)
 
-        node.input.clicked.connect(self.handle_port_click)
-        node.output.clicked.connect(self.handle_port_click)
+        # for port in node.get_all_ports():
+        #     self.register_port(port)
 
         self.scene().addItem(node)
 

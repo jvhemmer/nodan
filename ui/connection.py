@@ -34,7 +34,6 @@ class ConnectionTip(QGraphicsObject):
 
     def mousePressEvent(self, event):
         self.clicked.emit(self.connection)
-        print("emitted")
         event.accept()
 
     def hoverEnterEvent(self, event):

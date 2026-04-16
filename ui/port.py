@@ -179,6 +179,7 @@ class Port(QGraphicsObject):
 
     def mousePressEvent(self, event):
         self.clicked.emit(self)
+        print("Port clicked")
         event.accept()
 
     def hoverEnterEvent(self, event):
