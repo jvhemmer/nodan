@@ -39,8 +39,8 @@ class Canvas(QGraphicsView):
     def get_cursor_pos(self) -> QPointF:
         return self.mapToScene(self.mapFromGlobal(QCursor.pos()))
 
-    def add_node(self, pos: QPointF, title="New Node"):
-        node = Node(self, pos.x(), pos.y(), title=title)
+    def add_node(self, pos: QPointF, name="New Node"):
+        node = Node(self, pos.x(), pos.y(), name=name)
 
         self.scene().addItem(node)
         self.nodes.append(node)

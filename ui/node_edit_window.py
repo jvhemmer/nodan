@@ -1,8 +1,9 @@
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QPushButton, QSizePolicy, QLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QPushButton, QSizePolicy, QLayout, QBoxLayout, QLineEdit
 
 from ui.node import Node
 from ui.port_edit_row import PortEditRow
+
 
 class NodeEditWindow(QWidget):
     def __init__(self, node: Node):
@@ -11,11 +12,13 @@ class NodeEditWindow(QWidget):
         self.rows = {}
 
         self.setWindowTitle(node.name)
-        # self.resize(400, 0)
-        # self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
 
         self.layout = QVBoxLayout(self)
-        # self.layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+
+        self.meta_box = QGroupBox("Node")
+        self.meta_layout = QVBoxLayout(self.meta_box)
+        self.name_edit = QLineEdit(self.meta_box)
+        self.meta_layout.addWidget(self.name_edit)
 
         self.input_box = QGroupBox("Inputs")
         self.input_layout = QVBoxLayout(self.input_box)
@@ -26,6 +29,7 @@ class NodeEditWindow(QWidget):
         self.add_input_button = QPushButton("Add Input")
         self.add_output_button = QPushButton("Add Output")
 
+        self.layout.addWidget(self.meta_box)
         self.layout.addWidget(self.input_box)
         self.layout.addWidget(self.add_input_button)
         self.layout.addWidget(self.output_box)
@@ -33,6 +37,7 @@ class NodeEditWindow(QWidget):
 
         self.add_input_button.clicked.connect(lambda: self.add_port("input"))
         self.add_output_button.clicked.connect(lambda: self.add_port("output"))
+        self.name_edit.editingFinished.connect(self.on_name_edit_changed)
 
         self.rebuild_rows()
 
@@ -59,13 +64,6 @@ class NodeEditWindow(QWidget):
 
         QTimer.singleShot(0, self.adjustSize)
 
-        print("window actual size", self.size())
-        print("window", self.sizeHint(), self.minimumSizeHint())
-        print("inputs box", self.input_box.sizeHint())
-        print("outputs box", self.output_box.sizeHint())
-        print("add input", self.add_input_button.sizeHint())
-        print("add output", self.add_output_button.sizeHint())
-
     def add_port_row(self, port):
         row = PortEditRow(port, self)
         row.remove_requested.connect(self.remove_port)
@@ -86,3 +84,8 @@ class NodeEditWindow(QWidget):
     def remove_port(self, port):
         self.node.remove_port(port)
         self.rebuild_rows()
+
+    def on_name_edit_changed(self):
+        self.node.change_label(self.name_edit.text())
+        self.node.update()
+        self.name_edit.clearFocus()

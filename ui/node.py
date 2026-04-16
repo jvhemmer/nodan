@@ -14,16 +14,15 @@ from ui.connection import Connection
 
 
 class Node(QGraphicsRectItem):
-    # remove_requested = Signal(object)
+    # remove_requested = Signal(object) # QGraphicsObject
 
-    def __init__(self, parent: Canvas, x=0, y=0, width=140, height=70, title="Node"):
+    def __init__(self, parent: Canvas, x=0, y=0, width=140, height=70, name="Node"):
         super().__init__(0, 0, width, height)
         self.view = parent
         self.inputs = []
         self.outputs = []
         self._last_context_pos = None
-        # TODO: Change `title` to `name` in all occurences
-        self.name = title
+        self.name = name
 
         self.setPos(x, y)
 
@@ -36,12 +35,18 @@ class Node(QGraphicsRectItem):
             | QGraphicsRectItem.GraphicsItemFlag.ItemSendsGeometryChanges
         )
 
-        self.label = QGraphicsSimpleTextItem(title, self)
+        self.label = QGraphicsSimpleTextItem(self)
         self.label.setBrush(QBrush(QColor("#eceff4")))
         self.label.setPos(12, 10)
+        self.change_label(name)
 
         self.input = self.add_port("input")
         self.output = self.add_port("output")
+
+    # TODO: Standardize how labeling is done in all classes
+    def change_label(self, label: str):
+        self.name = label
+        self.label.setText(label)
 
     def delete(self):
         for port in self.get_all_ports():
