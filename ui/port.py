@@ -1,34 +1,37 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from PySide6.QtAsyncio import QAsyncioEventLoop
-
 if TYPE_CHECKING:
     from ui.node import Node
     from ui.connection import Connection
 
-from PySide6.QtCore import QPointF, QPoint, Signal, QRectF, QLineF, QEvent
-from PySide6.QtGui import QBrush, QColor, QPen, QPainterPath, QCursor, QMouseEvent
-from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsPathItem, QGraphicsEllipseItem, \
-    QGraphicsItem, QGraphicsObject, QGraphicsView
+from PySide6.QtCore import QPointF, Signal, QRectF, QLineF, QEvent, QPoint
+from PySide6.QtGui import QBrush, QColor, QPen, QCursor, QMouseEvent, QPainter, QFont
+from PySide6.QtWidgets import QGraphicsObject
 
 import numpy as np
+
 
 class Port(QGraphicsObject):
     clicked = Signal(object)
     moved_away = Signal(object)
 
-    def __init__(self, parent: Node, kind: str, x: float, y: float, radius=6):
+    def __init__(self, parent: Node, kind: str, x: float, y: float, name: str = "New port", radius=6):
         super().__init__(parent)
         self.node = parent
         self.kind = kind
         self.radius = radius
-        self.connections = []
-        self.hovered = False
+        self.name = name
 
+        self.text_painter = QPainter()
+
+        self.connections = []
+
+        self.hovered = False
         self.threshold = 25
         self._tracking = False
         self._outside = False
+        self.show_name = False
 
         self.setPos(x, y)
 
@@ -40,10 +43,21 @@ class Port(QGraphicsObject):
         r = self.radius
         return QRectF(-r, -r, r * 2, r * 2)
 
+    def draw_name(self, painter):
+        painter.setPen(QColor("#eceff4"))
+        painter.setFont(QFont("Segoe UI", 7))
+        if self.kind == "input":
+            text_pos = QPointF(7.5, -7.5)
+        else:
+            text_pos = QPointF(7.5, self.boundingRect().height() / 2 + 7.5)
+        painter.drawText(text_pos, self.name)
+
     def paint(self, painter, option, widget=None):
         painter.setBrush(QBrush(QColor("#d08770") if self.kind == "input" else QColor("#a3be8c")))
         painter.setPen(QPen(QColor("#2e3440"), 2))
         painter.drawEllipse(self.boundingRect())
+        if self.hovered or self.show_name:
+            self.draw_name(painter)
 
     def scene_center(self):
         """Returns the center of the Port in Scene coordinates."""
@@ -179,7 +193,6 @@ class Port(QGraphicsObject):
 
     def mousePressEvent(self, event):
         self.clicked.emit(self)
-        print("Port clicked")
         event.accept()
 
     def hoverEnterEvent(self, event):
