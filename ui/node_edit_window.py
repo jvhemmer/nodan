@@ -1,4 +1,5 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QPushButton, QSizePolicy
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QPushButton, QSizePolicy, QLayout
 
 from ui.node import Node
 from ui.port_edit_row import PortEditRow
@@ -10,10 +11,11 @@ class NodeEditWindow(QWidget):
         self.rows = {}
 
         self.setWindowTitle(node.name)
-        self.resize(400, 0)
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        # self.resize(400, 0)
+        # self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
 
         self.layout = QVBoxLayout(self)
+        # self.layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
 
         self.input_box = QGroupBox("Inputs")
         self.input_layout = QVBoxLayout(self.input_box)
@@ -55,8 +57,14 @@ class NodeEditWindow(QWidget):
         for port in self.node.outputs:
             self.add_port_row(port)
 
-        self.layout.activate()
-        self.adjustSize()
+        QTimer.singleShot(0, self.adjustSize)
+
+        print("window actual size", self.size())
+        print("window", self.sizeHint(), self.minimumSizeHint())
+        print("inputs box", self.input_box.sizeHint())
+        print("outputs box", self.output_box.sizeHint())
+        print("add input", self.add_input_button.sizeHint())
+        print("add output", self.add_output_button.sizeHint())
 
     def add_port_row(self, port):
         row = PortEditRow(port, self)
@@ -68,6 +76,8 @@ class NodeEditWindow(QWidget):
             self.input_layout.addWidget(row)
         else:
             self.output_layout.addWidget(row)
+
+        QTimer.singleShot(0, self.adjustSize)
 
     def add_port(self, kind):
         self.node.add_port(kind)
