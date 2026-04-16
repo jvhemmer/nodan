@@ -3,15 +3,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ui.canvas import Canvas
 
-from PySide6.QtCore import QPointF, QPoint
-from PySide6.QtGui import QBrush, QColor, QPen, QPainterPath, QAction
-from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsPathItem, QGraphicsEllipseItem, \
-    QGraphicsItem, QWidget, QMenu
-
-import math
+from PySide6.QtGui import QBrush, QColor, QPen
+from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsItem, QMenu
 
 from ui.port import Port
 from ui.connection import Connection
+
 
 class Node(QGraphicsRectItem):
     def __init__(self, parent: Canvas, x=0, y=0, width=140, height=70, title="Node"):
@@ -35,9 +32,6 @@ class Node(QGraphicsRectItem):
         self.label = QGraphicsSimpleTextItem(title, self)
         self.label.setBrush(QBrush(QColor("#eceff4")))
         self.label.setPos(12, 10)
-
-        # self.input = Port(self, "input", x=width/2, y=0)
-        # self.output = Port(self, "output", x=width/2, y=height)
 
         self.input = self.add_port("input")
         self.output = self.add_port("output")
@@ -80,6 +74,8 @@ class Node(QGraphicsRectItem):
         menu = QMenu()
         add_input_action = menu.addAction("Add input")
         add_output_action = menu.addAction("Add output")
+        menu.addSeparator()
+        delete_node = menu.addAction("Delete node")
 
         chosen = menu.exec(event.screenPos())
 
@@ -87,6 +83,9 @@ class Node(QGraphicsRectItem):
             self.add_port("input")
         elif chosen == add_output_action:
             self.add_port("output")
+        elif chosen == delete_node:
+            # self.delete()
+            pass
 
         event.accept()
 
