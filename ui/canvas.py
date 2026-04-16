@@ -1,16 +1,15 @@
 from PySide6.QtCore import QPoint, Qt, QPointF, QTimer
 from PySide6.QtGui import QAction, QCursor
-from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu, QGraphicsItem
+from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu
 
 from ui.node import Node
 from ui.port import Port
 from ui.connection import Connection, ConnectionTip
-
+from ui.node_edit_window import NodeEditWindow
 
 class Canvas(QGraphicsView):
     def __init__(self):
         super().__init__()
-
         self.alt_held = None
         self.setMouseTracking(True)
 
@@ -23,6 +22,8 @@ class Canvas(QGraphicsView):
 
         self.pending_connection: Connection | None = None
         self.pending_source_port = None
+
+        self.node_edit_windows = []
 
         self._scene = QGraphicsScene()
         self.setScene(self._scene)
@@ -41,11 +42,16 @@ class Canvas(QGraphicsView):
     def add_node(self, pos: QPointF, title="New Node"):
         node = Node(self, pos.x(), pos.y(), title=title)
 
-        # for port in node.get_all_ports():
-        #     self.register_port(port)
-
         self.scene().addItem(node)
         self.nodes.append(node)
+
+    def remove_node(self, node: Node):
+        if node in self.nodes:
+            self.nodes.remove(node)
+
+        self.scene().removeItem(node)
+
+        node.delete()
 
     def add_node_at_context_pos(self):
         scene_pos = self.mapToScene(self._last_context_pos)
@@ -114,7 +120,25 @@ class Canvas(QGraphicsView):
         # Clicking an unconnected input with a pending connection
         self.add_pending_connection(self.pending_connection, port)
 
+    def set_show_port_names(self, value: bool):
+        for node in self.nodes:
+            for port in node.get_all_ports():
+                if port.show_name != value:
+                    port.show_name = value
+                    port.update()
+
     # Key/Mouse Events
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            item = self.itemAt(event.pos())
+            if item is not None:
+                if isinstance(item, Node):
+                    w = NodeEditWindow(self, item)
+                    w.show()
+                    self.node_edit_windows.append(w)
+                    event.accept()
+                return
+
     def contextMenuEvent(self, event):
         # Right-click opens context menu
         item = self.itemAt(event.pos())
@@ -130,7 +154,6 @@ class Canvas(QGraphicsView):
         menu.addAction(add_block_action)
         add_block_action.triggered.connect(self.add_node_at_context_pos)
         menu.exec(event.globalPos())
-
 
     def wheelEvent(self, event):
         # Zooming with Ctrl + Click
@@ -221,14 +244,3 @@ class Canvas(QGraphicsView):
             event.accept()
             return
         super().keyReleaseEvent(event)
-
-    def set_show_port_names(self, value: bool):
-        for node in self.nodes:
-            for port in node.get_all_ports():
-                if port.show_name != value:
-                    port.show_name = value
-                    port.update()
-
-    # def on_alt_held(self):
-    #     if self.alt_held:
-
