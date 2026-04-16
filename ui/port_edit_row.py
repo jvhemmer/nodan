@@ -19,12 +19,13 @@ class PortEditRow(QWidget):
         layout.addWidget(self.name_edit, 1)
         layout.addWidget(self.remove_button)
 
-        self.name_edit.textChanged.connect(self.on_name_changed)
+        self.name_edit.editingFinished.connect(self.on_name_changed)
         self.remove_button.clicked.connect(self.on_remove_clicked)
 
-    def on_name_changed(self, text: str):
-        self.port.name = text
+    def on_name_changed(self):
+        self.port.name = self.name_edit.text()
         self.port.update()
+        self.name_edit.clearFocus()
 
     def on_remove_clicked(self):
         self.remove_requested.emit(self.port)
