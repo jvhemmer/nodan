@@ -1,5 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
+from PySide6.QtCore import Signal
+
 if TYPE_CHECKING:
     from ui.canvas import Canvas
 
@@ -11,12 +14,16 @@ from ui.connection import Connection
 
 
 class Node(QGraphicsRectItem):
+    # remove_requested = Signal(object)
+
     def __init__(self, parent: Canvas, x=0, y=0, width=140, height=70, title="Node"):
         super().__init__(0, 0, width, height)
         self.view = parent
         self.inputs = []
         self.outputs = []
         self._last_context_pos = None
+        # TODO: Change `title` to `name` in all occurences
+        self.name = title
 
         self.setPos(x, y)
 
@@ -36,6 +43,10 @@ class Node(QGraphicsRectItem):
         self.input = self.add_port("input")
         self.output = self.add_port("output")
 
+    def delete(self):
+        for port in self.get_all_ports():
+            self.remove_port(port)
+
     def add_port(self, kind: str) -> Port:
         port = Port(self, kind, 0, 0)
         if kind == "input":
@@ -45,6 +56,22 @@ class Node(QGraphicsRectItem):
         self.register_port(port)
         self.layout_ports()
         return port
+
+    def remove_port(self, port: Port):
+        ports = self.inputs if port.kind == "input" else self.outputs
+        if port not in ports:
+            return
+
+        for connection in port.connections.copy():
+            connection.delete()
+
+        ports.remove(port)
+
+        scene = self.scene()
+        if scene is not None:
+            scene.removeItem(port)
+
+        self.layout_ports()
 
     def layout_ports(self):
         rect = self.rect()
@@ -84,7 +111,9 @@ class Node(QGraphicsRectItem):
         elif chosen == add_output_action:
             self.add_port("output")
         elif chosen == delete_node:
-            # self.delete()
+            # self.remove_requested.emit(self)
+            # TODO: Change Node to QGraphicsItem to support signals and change this to a signal emition
+            self.view.remove_node(self)
             pass
 
         event.accept()
