@@ -39,8 +39,10 @@ class ConnectionTip(QGraphicsObject):
 
     def hoverEnterEvent(self, event):
         self.hovered = True
-        self.setScale(2.0)
+        if self.connection.target:
+            self.setScale(2.0)
         self.update()
+        super().hoverEnterEvent(event)
 
     def hoverLeaveEvent(self, event):
         self.hovered = False
