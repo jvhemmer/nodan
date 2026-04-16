@@ -1,18 +1,22 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
+from PySide6.QtAsyncio import QAsyncioEventLoop
+
 if TYPE_CHECKING:
     from ui.node import Node
     from ui.connection import Connection
 
-from PySide6.QtCore import QPointF, QPoint, Signal, QRectF
-from PySide6.QtGui import QBrush, QColor, QPen, QPainterPath, QCursor
+from PySide6.QtCore import QPointF, QPoint, Signal, QRectF, QLineF, QEvent
+from PySide6.QtGui import QBrush, QColor, QPen, QPainterPath, QCursor, QMouseEvent
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsPathItem, QGraphicsEllipseItem, \
-    QGraphicsItem, QGraphicsObject
+    QGraphicsItem, QGraphicsObject, QGraphicsView
 
 import numpy as np
 
 class Port(QGraphicsObject):
     clicked = Signal(object)
+    moved_away = Signal(object)
 
     def __init__(self, parent: Node, kind: str, x: float, y: float, radius=6):
         super().__init__(parent)
@@ -21,6 +25,11 @@ class Port(QGraphicsObject):
         self.radius = radius
         self.connections = []
         self.hovered = False
+
+        self.threshold = 25
+        self._tracking = False
+        self._outside = False
+
         self.setPos(x, y)
 
         self.setZValue(1)
@@ -28,8 +37,8 @@ class Port(QGraphicsObject):
         self.setAcceptHoverEvents(True)
 
     def calculate_hit_radius(self) -> float:
-        return self.radius + 15 + 1*len(self.connections)
-        # return self.radius
+        # return self.radius + 15 + 1*len(self.connections)
+        return self.radius
 
     def boundingRect(self):
         r = self.calculate_hit_radius()
@@ -66,7 +75,7 @@ class Port(QGraphicsObject):
         """Calculates where the connection should connect to."""
         center = self.scene_center()
 
-        if not self.hovered or connection not in self.connections:
+        if (not self.hovered and self._outside) or connection not in self.connections:
             return center
 
         # If Port is being hovered:
@@ -118,16 +127,90 @@ class Port(QGraphicsObject):
 
         return self.scene_center()
 
+    def distance_from_cursor(self) -> float | None:
+        scene = self.scene()
+        if scene is None:
+            return None
+
+        view = scene.views()[0]
+        cursor_pos = view.mapToScene(view.mapFromGlobal(QCursor.pos()))
+        port_pos = self.mapToScene(0, 0)
+        return QLineF(cursor_pos, port_pos).length()
+
+    def view(self):
+        scene = self.scene()
+        if scene is None or not scene.views():
+            return None
+        return scene.views()[0]
+
+    def start_distance_tracking(self, threshold: float = 25.0):
+        self.threshold = threshold
+        view = self.view()
+        if view is None:
+            return
+        view.viewport().installEventFilter(self)
+        self._tracking = True
+        self._outside = False
+
+    def stop_distance_tracking(self):
+        view = self.view()
+        if view is not None:
+            view.viewport().removeEventFilter(self)
+        self._tracking = False
+        self._outside = False
+
+    def eventFilter(self, obj, event):
+        if not self._tracking:
+            return super().eventFilter(obj, event)
+
+        if event.type() == QEvent.Type.MouseMove and isinstance(event, QMouseEvent):
+            view = self.view()
+            if view is None:
+                return False
+
+            cursor_scene = view.mapToScene(event.position().toPoint())
+            port_scene = self.mapToScene(QPointF(0, 0))
+            distance = QLineF(cursor_scene, port_scene).length()
+            dx = cursor_scene.x() - port_scene.x()
+            dy = cursor_scene.y() - port_scene.y()
+
+            if self.kind == "input":
+                in_semicircle = dy <= 0
+            else:
+                in_semicircle = dy >= 0
+
+            is_outside = (distance > self.threshold) or (not in_semicircle)
+            if is_outside and not self._outside:
+                self.stop_distance_tracking()
+                self._outside = True
+                self.moved_away.emit(self)
+                self.refresh_connections()
+            elif not is_outside:
+                self._outside = False
+                self.refresh_connections()
+
+        return False
+
     def mousePressEvent(self, event):
         self.clicked.emit(self)
         event.accept()
 
-    def set_hovered(self, hovered: bool):
-        if self.hovered == hovered:
-            return
+    def hoverEnterEvent(self, event):
+        self.hovered = True
 
         self.prepareGeometryChange()
-        self.hovered = hovered
-        self.setScale(1.25 if hovered else 1.0)
+        self.setScale(1.25)
         self.refresh_connections()
         self.update()
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self.hovered = False
+
+        self.start_distance_tracking()
+        self.prepareGeometryChange()
+        self.setScale(1.0)
+        self.refresh_connections()
+        self.update()
+
+        super().hoverLeaveEvent(event)

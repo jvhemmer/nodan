@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ui.canvas import Canvas
+
 from PySide6.QtCore import QPointF, QPoint
 from PySide6.QtGui import QBrush, QColor, QPen, QPainterPath
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsPathItem, QGraphicsEllipseItem, \
@@ -9,8 +14,10 @@ from ui.port import Port
 from ui.connection import Connection
 
 class Node(QGraphicsRectItem):
-    def __init__(self, x=0, y=0, width=140, height=70, title="Node"):
+    def __init__(self, parent, x=0, y=0, width=140, height=70, title="Node"):
         super().__init__(0, 0, width, height)
+        self.view = parent
+
         self.setPos(x, y)
 
         self.setBrush(QBrush(QColor("#3b4252")))

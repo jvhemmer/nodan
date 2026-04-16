@@ -37,12 +37,14 @@ class ConnectionTip(QGraphicsObject):
         print("emitted")
         event.accept()
 
-    def set_hovered(self, hovered: bool):
-        if self.hovered == hovered:
-            return
+    def hoverEnterEvent(self, event):
+        self.hovered = True
+        self.setScale(2.0)
+        self.update()
 
-        self.hovered = hovered
-        self.setScale(2.0 if hovered else 1.0)
+    def hoverLeaveEvent(self, event):
+        self.hovered = False
+        self.setScale(1.0)
         self.update()
 
 class Connection(QGraphicsPathItem):

@@ -15,7 +15,6 @@ class Canvas(QGraphicsView):
 
         self.setMouseTracking(True)
 
-        self._hovered_items = set()
         self._is_panning = False
         self._pan_start = QPoint()
         self._zoom = 0
@@ -110,37 +109,10 @@ class Canvas(QGraphicsView):
             )
             event.accept()
             return
-
-        # Hovering over Ports or ConnectionTips
-        scene_pos = self.mapToScene(event.pos())
-        items_under_cursor = self.scene().items(scene_pos)
-        self.handle_port_or_connection_hover(items_under_cursor)
-
         super().mouseMoveEvent(event)
 
     def get_cursor_pos(self) -> QPointF:
         return self.mapToScene(self.mapFromGlobal(QCursor.pos()))
-
-    def handle_port_or_connection_hover(self, items):
-        # TODO: Make Node, Port and Connection inherit from QGraphicsObject and customize hover behavior
-        hovered_items = set()
-
-        for item in items:
-            if isinstance(item, Port):
-                hovered_items.add(item)
-            elif isinstance(item, ConnectionTip):
-                if item.connection.target is not None:
-                    hovered_items.add(item.connection.target)
-                    hovered_items.add(item.connection)
-                    hovered_items.add(item)
-
-        for item in self._hovered_items - hovered_items:
-            item.set_hovered(False)
-
-        for item in hovered_items - self._hovered_items:
-            item.set_hovered(True)
-
-        self._hovered_items = hovered_items
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.MiddleButton:
@@ -151,7 +123,7 @@ class Canvas(QGraphicsView):
         super().mouseReleaseEvent(event)
 
     def add_node(self, pos: QPointF, title="New Node"):
-        node = Node(pos.x(), pos.y(), title=title)
+        node = Node(self, pos.x(), pos.y(), title=title)
 
         node.input.clicked.connect(self.handle_port_click)
         node.output.clicked.connect(self.handle_port_click)
