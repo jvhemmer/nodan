@@ -1,5 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
+from core.node_system import Operation
+
 if TYPE_CHECKING:
     from coordinator.coordinator import Coordinator
 
@@ -154,10 +157,16 @@ class Canvas(QGraphicsView):
         self._last_context_pos = event.pos()
 
         menu = QMenu()
-        add_constval_action = menu.addAction("Add ConstantValue node")
-        add_constval_action.triggered.connect(lambda: self.add_node_at_context_pos("value.constant"))
-        add_debuglog_action = menu.addAction("Add DebugLog node")
-        add_debuglog_action.triggered.connect(lambda: self.add_node_at_context_pos("debug.log"))
+
+        # TODO: Tidy this up
+        for type_id, op_cls in Operation.registry.items():
+            action = menu.addAction(f"Add {op_cls.title} node")
+            action.triggered.connect(lambda: self.add_node_at_context_pos(type_id))
+
+        # add_constval_action = menu.addAction("Add ConstantValue node")
+        # add_constval_action.triggered.connect(lambda: self.add_node_at_context_pos("value.constant"))
+        # add_debuglog_action = menu.addAction("Add DebugLog node")
+        # add_debuglog_action.triggered.connect(lambda: self.add_node_at_context_pos("debug.log"))
         menu.exec(event.globalPos())
 
     def wheelEvent(self, event):
