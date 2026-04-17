@@ -3,7 +3,8 @@ from uuid import uuid4
 
 from PySide6.QtCore import QPointF
 
-from core.node_definition import CoreNode, Operation, ConstantValue, DebugLog, MultiplyValue
+from core.node_system import CoreNode
+from core.operations import Operation, ConstantValue, DebugLog, MultiplyValue
 from ui.canvas import Canvas
 from core.graph import Graph, Executor
 from ui.connection import UIConnection
@@ -26,23 +27,16 @@ class Coordinator:
         self.node_bindings: dict[str, UINodeBinding] = {}
         self.port_index: dict[UIPort, tuple[str, str, str]] = {}
 
-        # TODO: Function to autoregister all NodeDefinitions
-        self.node_types: dict[str, type[Operation]] = {
-            "value.constant": ConstantValue,
-            "debug.log": DebugLog,
-            "multiply.value": MultiplyValue,
-        }
-
         self._wire_canvas()
 
     def _wire_canvas(self) -> None:
-        self.canvas.port_clicked = self.handle_port_clicked
-        self.canvas.node_delete_requested = self.remove_node
+        # self.canvas.port_clicked = self.handle_port_clicked
+        # self.canvas.node_delete_requested = self.remove_node
         self.canvas.add_node_requested.connect(self.add_node_by_type)
 
     def add_node_by_type(self, type_id: str, pos: QPointF) -> str:
         # Instantiate the definition
-        definition_cls = self.node_types[type_id]
+        definition_cls = Operation.registry[type_id]
         definition = definition_cls()
 
         node = CoreNode(
