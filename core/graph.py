@@ -1,16 +1,16 @@
-from core.node_definition import Node, Connection, PortSpec, ParamSpec
+from core.node_definition import CoreNode, CoreConnection, PortSpec, ParamSpec
 from typing import Any
 
 class Graph:
     def __init__(self):
-        self.nodes: dict[str, Node] = {}
-        self.connections: list[Connection] = []
+        self.nodes: dict[str, CoreNode] = {}
+        self.connections: list[CoreConnection] = []
 
-    def add_node(self, node: Node):
+    def add_node(self, node: CoreNode):
         self.nodes[node.id] = node
 
     def connect(self, source_node_id: str, source_port: str, target_node_id: str, target_port: str):
-        self.connections.append(Connection(source_node_id, source_port, target_node_id, target_port))
+        self.connections.append(CoreConnection(source_node_id, source_port, target_node_id, target_port))
 
 class Executor:
     def __init__(self, graph: Graph):

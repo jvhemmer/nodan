@@ -19,7 +19,7 @@ class RepeatedInputSpec:
     min_count: int = 2
     default_count: int = 2
 
-class NodeDefinition:
+class Operation:
     type_id = ""
     title = ""
     category = "General"
@@ -60,7 +60,7 @@ class NodeDefinition:
             seen_outputs.add(port.name)
 
 
-class ConstantValue(NodeDefinition):
+class ConstantValue(Operation):
     type_id = "value.constant"
     title = "Constant"
     category = "Values"
@@ -72,7 +72,7 @@ class ConstantValue(NodeDefinition):
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         return {"value": params["value"]}
 
-class DebugLog(NodeDefinition):
+class DebugLog(Operation):
     type_id = "debug.log"
     title = "Log"
     category = "Debug"
@@ -85,7 +85,7 @@ class DebugLog(NodeDefinition):
         value = inputs["value"]
         print(value)
 
-class MultiplyValue(NodeDefinition):
+class MultiplyValue(Operation):
     type_id = "multiply.value"
     title = "Multiply"
     category = "Basic operation"
@@ -106,15 +106,15 @@ class MultiplyValue(NodeDefinition):
         return {"result": result}
 
 @dataclass
-class Connection:
+class CoreConnection:
     source_node_id: str
     source_port: str
     target_node_id: str
     target_port: str
 
 @dataclass
-class Node:
+class CoreNode:
     id: str
-    definition: NodeDefinition
+    definition: Operation
     params: dict[str, Any]
     state: dict[str, Any]

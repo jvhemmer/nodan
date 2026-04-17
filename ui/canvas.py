@@ -1,4 +1,9 @@
-from PySide6.QtCore import QPoint, Qt, QPointF, QTimer
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from coordinator.coordinator import Coordinator
+
+from PySide6.QtCore import QPoint, Qt, QPointF, QTimer, Signal
 from PySide6.QtGui import QAction, QCursor
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu
 
@@ -8,8 +13,11 @@ from ui.connection import UIConnection, UIConnectionTip
 from ui.node_edit_window import NodeEditWindow
 
 class Canvas(QGraphicsView):
+    add_node_requested = Signal(str, QPointF)
+    port_clicked = Signal()
     def __init__(self):
         super().__init__()
+        self.coordinator = None
         self.alt_held = None
         self.setMouseTracking(True)
 
@@ -36,7 +44,7 @@ class Canvas(QGraphicsView):
 
         self._last_context_pos = QPoint()
 
-        self.debug_mode()
+        # self.debug_mode()
 
     def debug_mode(self):
         node = UINode(self, 0, 0, name='test')
@@ -46,12 +54,6 @@ class Canvas(QGraphicsView):
     def get_cursor_pos(self) -> QPointF:
         return self.mapToScene(self.mapFromGlobal(QCursor.pos()))
 
-    def add_node(self, pos: QPointF, name="New Node"):
-        node = UINode(self, pos.x(), pos.y(), name=name)
-
-        self.scene().addItem(node)
-        self.nodes.append(node)
-
     def remove_node(self, node: UINode):
         if node in self.nodes:
             self.nodes.remove(node)
@@ -60,9 +62,9 @@ class Canvas(QGraphicsView):
 
         node.delete()
 
-    def add_node_at_context_pos(self):
+    def add_node_at_context_pos(self, node_type: str):
         scene_pos = self.mapToScene(self._last_context_pos)
-        self.add_node(scene_pos)
+        self.add_node_requested.emit(node_type, scene_pos)
 
     def add_pending_connection(self, connection: UIConnection, target: UIPort):
         source = self.pending_source_port
@@ -100,35 +102,26 @@ class Canvas(QGraphicsView):
 
     def handle_port_click(self, port: UIPort):
         if self.pending_connection is None:
-            # Start a connection if clicked on an input
+            # If there's no pending connection
             if port.kind != "output":
                 return
             self.start_pending_connection(port)
             return
 
         if port is self.pending_source_port:
-            # If clicking on the same port, cancel
+            # Clicking on the source port
             self.cancel_pending_connection()
             return
 
-        if port.kind != "input":
-            # Clicking an output without a pending connection
+        source = self.pending_source_port
+        target = port
+
+        if not self.coordinator.can_connect(source, target):
             return
 
-        if self.pending_source_port.is_connected_to(port):
-            # Prevent recreating an existing connection
-            return
-
-        if port.kind == 'input':
-            # Prevent more than one connection to the same input
-            if port.connections:
-                return
-
-        if port.node == self.pending_source_port.node:
-            return
-
-        # Clicking an unconnected input with a pending connection
-        self.add_pending_connection(self.pending_connection, port)
+        self.pending_connection.delete()
+        self.clear_pending_connection()
+        self.coordinator.connect_ports(source, target)
 
     def set_show_port_names(self, value: bool):
         for node in self.nodes:
@@ -143,9 +136,10 @@ class Canvas(QGraphicsView):
             item = self.itemAt(event.pos())
             if item is not None:
                 if isinstance(item, UINode):
-                    w = NodeEditWindow(item)
+                    w = NodeEditWindow(item, self)
                     w.show()
                     self.node_edit_windows.append(w)
+                    w.evaluate_requested.connect(self.coordinator.evaluate_node)
                     event.accept()
                 return
 
@@ -160,9 +154,10 @@ class Canvas(QGraphicsView):
         self._last_context_pos = event.pos()
 
         menu = QMenu()
-        add_block_action = QAction("Add Node", self)
-        menu.addAction(add_block_action)
-        add_block_action.triggered.connect(self.add_node_at_context_pos)
+        add_constval_action = menu.addAction("Add ConstantValue node")
+        add_constval_action.triggered.connect(lambda: self.add_node_at_context_pos("value.constant"))
+        add_debuglog_action = menu.addAction("Add DebugLog node")
+        add_debuglog_action.triggered.connect(lambda: self.add_node_at_context_pos("debug.log"))
         menu.exec(event.globalPos())
 
     def wheelEvent(self, event):

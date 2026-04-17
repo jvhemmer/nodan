@@ -1,37 +1,37 @@
 from core.graph import Graph, Executor
-from core.node_definition import Node, DebugLog, ConstantValue, MultiplyValue
+from core.node_definition import CoreNode, DebugLog, ConstantValue, MultiplyValue
 
 graph = Graph()
 
-const_node = Node(
+const_node = CoreNode(
     id="n1",
     definition=ConstantValue(),
     params={"value": 42},
     state={}
 )
 
-const_node2 = Node(
+const_node2 = CoreNode(
     id="n3",
     definition=ConstantValue(),
     params={"value": 100},
     state={}
 )
 
-multiply_node = Node(
+multiply_node = CoreNode(
     id="n4",
     definition=MultiplyValue(),
     params={},
     state={"input_count": 2}
 )
 
-log_node = Node(
+log_node = CoreNode(
     id="n2",
     definition=DebugLog(),
     params={},
     state={}
 )
 
-log_node2 = Node(
+log_node2 = CoreNode(
     id="n5",
     definition=DebugLog(),
     params={},

@@ -16,9 +16,11 @@ from ui.connection import UIConnection
 class UINode(QGraphicsRectItem):
     # remove_requested = Signal(object) # QGraphicsObject
 
-    def __init__(self, parent: Canvas, x=0, y=0, width=140, height=70, name="Node"):
+    def __init__(self, parent: Canvas, node_id: str, x=0, y=0, width=140, height=70, name="Node"):
         super().__init__(0, 0, width, height)
         self.view = parent
+        self.node_id = node_id
+
         self.inputs = []
         self.outputs = []
         self._last_context_pos = None
