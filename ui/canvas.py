@@ -117,6 +117,9 @@ class Canvas(QGraphicsView):
             if port.connections:
                 return
 
+        if port.node == self.pending_source_port.node:
+            return
+
         # Clicking an unconnected input with a pending connection
         self.add_pending_connection(self.pending_connection, port)
 
