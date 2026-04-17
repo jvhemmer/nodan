@@ -1,4 +1,4 @@
-from core.node_definition import CoreNode, CoreConnection, PortSpec, ParamSpec
+from core.node_system import CoreNode, CoreConnection, PortSpec, ParamSpec
 from typing import Any
 
 class Graph:

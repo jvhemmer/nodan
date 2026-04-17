@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from typing import Any
-
 @dataclass
 class PortSpec:
     name: str
@@ -20,6 +19,8 @@ class RepeatedInputSpec:
     default_count: int = 2
 
 class Operation:
+    registry: dict[str, type["Operation"]] = {}
+
     type_id = ""
     title = ""
     category = "General"
@@ -27,6 +28,20 @@ class Operation:
     inputs: tuple[PortSpec, ...] = ()
     outputs: tuple[PortSpec, ...] = ()
     repeated_inputs: RepeatedInputSpec | None = None
+
+    def __init__(self):
+        self.validate_ports()
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+        if not cls.type_id:
+            return
+
+        if cls.type_id in Operation.registry:
+            raise ValueError(f"Duplication operation type_id: {cls.type_id}")
+
+        Operation.registry[cls.type_id] = cls
 
     def get_input_ports(self, instance) -> list[PortSpec]:
         ports = list(self.inputs)
@@ -43,9 +58,6 @@ class Operation:
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         raise NotImplementedError
 
-    def __init__(self):
-        self.validate_ports()
-
     def validate_ports(self):
         seen_inputs = set()
         for port in self.inputs:
@@ -58,52 +70,6 @@ class Operation:
             if port.name in seen_outputs:
                 raise ValueError(f"Duplicate output port {port.name}")
             seen_outputs.add(port.name)
-
-
-class ConstantValue(Operation):
-    type_id = "value.constant"
-    title = "Constant"
-    category = "Values"
-
-    inputs = []
-    outputs = [PortSpec("value", "any")]
-    params = [ParamSpec("value", "any", 0)]
-
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
-        return {"value": params["value"]}
-
-class DebugLog(Operation):
-    type_id = "debug.log"
-    title = "Log"
-    category = "Debug"
-
-    inputs = [PortSpec("value", "any")]
-    outputs = []
-    params = []
-
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
-        value = inputs["value"]
-        print(value)
-
-class MultiplyValue(Operation):
-    type_id = "multiply.value"
-    title = "Multiply"
-    category = "Basic operation"
-
-    repeated_inputs = RepeatedInputSpec(
-        base_name="value",
-        data_type="number",
-        min_count=2,
-        default_count=2,
-    )
-
-    outputs = (PortSpec("result", "number"),)
-
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
-        result = 1
-        for value in inputs.values():
-            result *= value
-        return {"result": result}
 
 @dataclass
 class CoreConnection:
