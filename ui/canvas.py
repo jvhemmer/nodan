@@ -2,9 +2,9 @@ from PySide6.QtCore import QPoint, Qt, QPointF, QTimer
 from PySide6.QtGui import QAction, QCursor
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu
 
-from ui.node import Node
-from ui.port import Port
-from ui.connection import Connection, ConnectionTip
+from ui.node import UINode
+from ui.port import UIPort
+from ui.connection import UIConnection, UIConnectionTip
 from ui.node_edit_window import NodeEditWindow
 
 class Canvas(QGraphicsView):
@@ -20,7 +20,7 @@ class Canvas(QGraphicsView):
 
         self.nodes = []
 
-        self.pending_connection: Connection | None = None
+        self.pending_connection: UIConnection | None = None
         self.pending_source_port = None
 
         self.node_edit_windows = []
@@ -36,16 +36,23 @@ class Canvas(QGraphicsView):
 
         self._last_context_pos = QPoint()
 
+        self.debug_mode()
+
+    def debug_mode(self):
+        node = UINode(self, 0, 0, name='test')
+        self.scene().addItem(node)
+        self.nodes.append(node)
+
     def get_cursor_pos(self) -> QPointF:
         return self.mapToScene(self.mapFromGlobal(QCursor.pos()))
 
     def add_node(self, pos: QPointF, name="New Node"):
-        node = Node(self, pos.x(), pos.y(), name=name)
+        node = UINode(self, pos.x(), pos.y(), name=name)
 
         self.scene().addItem(node)
         self.nodes.append(node)
 
-    def remove_node(self, node: Node):
+    def remove_node(self, node: UINode):
         if node in self.nodes:
             self.nodes.remove(node)
 
@@ -57,7 +64,7 @@ class Canvas(QGraphicsView):
         scene_pos = self.mapToScene(self._last_context_pos)
         self.add_node(scene_pos)
 
-    def add_pending_connection(self, connection: Connection, target: Port):
+    def add_pending_connection(self, connection: UIConnection, target: UIPort):
         source = self.pending_source_port
 
         connection.set_target_port(target)
@@ -67,14 +74,14 @@ class Canvas(QGraphicsView):
         # print(f"Connected to {target.parent.label.text()}")
         self.clear_pending_connection()
 
-    def detach_connection(self, connection: Connection):
+    def detach_connection(self, connection: UIConnection):
         source = connection.source
         connection.delete()
         self.start_pending_connection(source)
 
-    def start_pending_connection(self, port: Port):
+    def start_pending_connection(self, port: UIPort):
         # print(f"Started connection from {port.parent.label.text()}")
-        connection = Connection(port)
+        connection = UIConnection(port)
         connection.set_drag_pos(self.get_cursor_pos())
         self.scene().addItem(connection)
 
@@ -91,7 +98,7 @@ class Canvas(QGraphicsView):
             self.scene().removeItem(self.pending_connection)
             self.clear_pending_connection()
 
-    def handle_port_click(self, port: Port):
+    def handle_port_click(self, port: UIPort):
         if self.pending_connection is None:
             # Start a connection if clicked on an input
             if port.kind != "output":
@@ -135,7 +142,7 @@ class Canvas(QGraphicsView):
         if event.button() == Qt.MouseButton.LeftButton:
             item = self.itemAt(event.pos())
             if item is not None:
-                if isinstance(item, Node):
+                if isinstance(item, UINode):
                     w = NodeEditWindow(item)
                     w.show()
                     self.node_edit_windows.append(w)
@@ -226,7 +233,7 @@ class Canvas(QGraphicsView):
             scene_pos = self.mapToScene(event.pos())
             items = self.scene().items(scene_pos)
             for item in items:
-                if isinstance(item, Connection):
+                if isinstance(item, UIConnection):
                     self.detach_connection(item)
                     event.accept()
                     return

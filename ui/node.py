@@ -9,11 +9,11 @@ if TYPE_CHECKING:
 from PySide6.QtGui import QBrush, QColor, QPen
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsItem, QMenu
 
-from ui.port import Port
-from ui.connection import Connection
+from ui.port import UIPort
+from ui.connection import UIConnection
 
 
-class Node(QGraphicsRectItem):
+class UINode(QGraphicsRectItem):
     # remove_requested = Signal(object) # QGraphicsObject
 
     def __init__(self, parent: Canvas, x=0, y=0, width=140, height=70, name="Node"):
@@ -52,8 +52,8 @@ class Node(QGraphicsRectItem):
         for port in self.get_all_ports():
             self.remove_port(port)
 
-    def add_port(self, kind: str) -> Port:
-        port = Port(self, kind, 0, 0)
+    def add_port(self, kind: str) -> UIPort:
+        port = UIPort(self, kind, 0, 0)
         if kind == "input":
             self.inputs.append(port)
         else:
@@ -62,7 +62,7 @@ class Node(QGraphicsRectItem):
         self.layout_ports()
         return port
 
-    def remove_port(self, port: Port):
+    def remove_port(self, port: UIPort):
         ports = self.inputs if port.kind == "input" else self.outputs
         if port not in ports:
             return
@@ -93,10 +93,10 @@ class Node(QGraphicsRectItem):
             port.setPos(step * (i + 1), y)
             port.refresh_connections()
 
-    def register_port(self, port: Port):
+    def register_port(self, port: UIPort):
         port.clicked.connect(self.view.handle_port_click)
 
-    def get_all_ports(self) -> list[Port]:
+    def get_all_ports(self) -> list[UIPort]:
         ports = [p for p in self.inputs] + [p for p in self.outputs]
         return ports
 

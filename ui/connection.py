@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from ui.port import Port
+    from ui.port import UIPort
 
 from PySide6.QtCore import QPointF, QPoint, Qt, QRectF, Signal
 from PySide6.QtGui import QColor, QPen, QPainterPath
@@ -9,9 +9,9 @@ from PySide6.QtWidgets import QGraphicsPathItem, QGraphicsObject
 
 import math
 
-class ConnectionTip(QGraphicsObject):
+class UIConnectionTip(QGraphicsObject):
     clicked = Signal(object)
-    def __init__(self, parent: Connection):
+    def __init__(self, parent: UIConnection):
         super().__init__(parent)
 
         self.connection = parent
@@ -47,8 +47,8 @@ class ConnectionTip(QGraphicsObject):
         self.setScale(1.0)
         self.update()
 
-class Connection(QGraphicsPathItem):
-    def __init__(self, source: Port, target: Port | None=None):
+class UIConnection(QGraphicsPathItem):
+    def __init__(self, source: UIPort, target: UIPort | None=None):
         super().__init__()
         self.source = source
         self.target = target
@@ -57,7 +57,7 @@ class Connection(QGraphicsPathItem):
         self.color = QColor("#88c0d0")
         self.thickness = 2
         self.highlight_thickness = 4
-        self.tip = ConnectionTip(self)
+        self.tip = UIConnectionTip(self)
 
         self.setPen(QPen(self.color, self.thickness))
         self.setZValue(-1)
@@ -69,7 +69,7 @@ class Connection(QGraphicsPathItem):
         self.drag_pos = pos
         self.update_path()
 
-    def set_target_port(self, port: Port):
+    def set_target_port(self, port: UIPort):
         self.target = port
         self.drag_pos = None
         self.update_path()

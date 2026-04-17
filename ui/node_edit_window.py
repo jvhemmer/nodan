@@ -1,12 +1,12 @@
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QPushButton, QSizePolicy, QLayout, QBoxLayout, QLineEdit
 
-from ui.node import Node
+from ui.node import UINode
 from ui.port_edit_row import PortEditRow
 
 
 class NodeEditWindow(QWidget):
-    def __init__(self, node: Node):
+    def __init__(self, node: UINode):
         super().__init__()
         self.node = node
         self.rows = {}

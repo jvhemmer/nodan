@@ -2,8 +2,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ui.node import Node
-    from ui.connection import Connection
+    from ui.node import UINode
+    from ui.connection import UIConnection
 
 from PySide6.QtCore import QPointF, Signal, QRectF, QLineF, QEvent, QPoint
 from PySide6.QtGui import QBrush, QColor, QPen, QCursor, QMouseEvent, QPainter, QFont
@@ -12,11 +12,11 @@ from PySide6.QtWidgets import QGraphicsObject
 import numpy as np
 
 
-class Port(QGraphicsObject):
+class UIPort(QGraphicsObject):
     clicked = Signal(object)
     moved_away = Signal(object)
 
-    def __init__(self, parent: Node, kind: str, x: float, y: float, name: str = "New port", radius=6):
+    def __init__(self, parent: UINode, kind: str, x: float, y: float, name: str = "New port", radius=6):
         super().__init__(parent)
         self.node = parent
         self.kind = kind
@@ -63,7 +63,7 @@ class Port(QGraphicsObject):
         """Returns the center of the Port in Scene coordinates."""
         return self.mapToScene(self.boundingRect().center())
 
-    def add_connection(self, connection: Connection):
+    def add_connection(self, connection: UIConnection):
         if connection not in self.connections:
             self.connections.append(connection)
 
@@ -71,7 +71,7 @@ class Port(QGraphicsObject):
         for connection in self.connections:
             connection.update_path()
 
-    def connection_anchor(self, connection: Connection):
+    def connection_anchor(self, connection: UIConnection):
         """Calculates where the connection should connect to."""
         center = self.scene_center()
 
@@ -112,13 +112,13 @@ class Port(QGraphicsObject):
             center.y() + radius * np.sin(angle),
         )
 
-    def is_connected_to(self, target: Port) -> bool:
+    def is_connected_to(self, target: UIPort) -> bool:
         for connection in self.connections:
             if connection.target is target:
                 return True
         return False
 
-    def other_node_pos(self, connection: Connection):
+    def other_node_pos(self, connection: UIConnection):
         if connection.source is self and connection.target is not None:
             return connection.target.node.sceneBoundingRect().center()
 
