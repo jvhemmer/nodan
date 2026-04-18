@@ -56,7 +56,7 @@ class UIPort(QGraphicsObject):
         painter.drawText(text_pos, self.name)
 
     def paint(self, painter, option, widget=None):
-        painter.setBrush(QBrush(QColor("#d08770") if self.kind == "input" else QColor("#a3be8c")))
+        painter.setBrush(QBrush(QColor("#a3be8c") if self.kind == "input" else QColor("#d08770")))
         painter.setPen(QPen(QColor("#2e3440"), 2))
         painter.drawEllipse(self.boundingRect())
         if self.hovered or self.show_name:
