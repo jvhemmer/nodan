@@ -1,10 +1,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ui.canvas import Canvas
+    from core.node_system import CoreNode, CorePort
 
 from PySide6.QtCore import Signal
 
-if TYPE_CHECKING:
-    from ui.canvas import Canvas
+
 
 from PySide6.QtGui import QBrush, QColor, QPen
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsItem, QMenu
@@ -16,10 +18,10 @@ from ui.connection import UIConnection
 class UINode(QGraphicsRectItem):
     # remove_requested = Signal(object) # QGraphicsObject
 
-    def __init__(self, parent: Canvas, node_id: str, x=0, y=0, width=140, height=70, name="Node"):
+    def __init__(self, parent: Canvas, core_node: CoreNode, x=0, y=0, width=140, height=70, name="Node"):
         super().__init__(0, 0, width, height)
         self.view = parent
-        self.node_id = node_id
+        self.core_node = core_node
 
         self.inputs = []
         self.outputs = []
@@ -42,9 +44,6 @@ class UINode(QGraphicsRectItem):
         self.label.setPos(12, 10)
         self.change_label(name)
 
-        self.input = self.add_port("input")
-        self.output = self.add_port("output")
-
     # TODO: Standardize how labeling is done in all classes
     def change_label(self, label: str):
         self.name = label
@@ -54,8 +53,8 @@ class UINode(QGraphicsRectItem):
         for port in self.get_all_ports():
             self.remove_port(port)
 
-    def add_port(self, kind: str) -> UIPort:
-        port = UIPort(self, kind, 0, 0)
+    def add_port(self, kind: str, core_port: CorePort) -> UIPort:
+        port = UIPort(self, kind, core_port, 0, 0)
         if kind == "input":
             self.inputs.append(port)
         else:

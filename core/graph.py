@@ -41,6 +41,13 @@ class Executor:
                 upstream_outputs = self.evaluate_node(matching_connection.source_node_id)
                 resolved_inputs[input_spec.name] = upstream_outputs[matching_connection.source_port]
 
+            for input_port in node.inputs:
+                # If unconnected, fall back to port.value
+                is_same_port = input_port.spec.name == input_spec.name
+                if is_same_port and input_port.value is not None:
+                    resolved_inputs[input_spec.name] = input_port.value
+                    break
+
         outputs = node.definition.evaluate(resolved_inputs, node.params)
         self.cache[node_id] = outputs
         return outputs

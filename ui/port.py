@@ -9,6 +9,8 @@ from PySide6.QtCore import QPointF, Signal, QRectF, QLineF, QEvent, QPoint
 from PySide6.QtGui import QBrush, QColor, QPen, QCursor, QMouseEvent, QPainter, QFont
 from PySide6.QtWidgets import QGraphicsObject
 
+from core.node_system import PortSpec, CorePort
+
 import numpy as np
 
 
@@ -16,10 +18,11 @@ class UIPort(QGraphicsObject):
     clicked = Signal(object)
     moved_away = Signal(object)
 
-    def __init__(self, parent: UINode, kind: str, x: float, y: float, name: str = "New port", radius=6):
+    def __init__(self, parent: UINode, kind: str, core_port: CorePort, x: float, y: float, name: str = "New port", radius=6):
         super().__init__(parent)
-        self.node = parent
+        self.ui_node: UINode = parent # to satisfy annoying checker
         self.kind = kind
+        self.core_port = core_port
         self.radius = radius
         self.name = name
 
@@ -120,10 +123,10 @@ class UIPort(QGraphicsObject):
 
     def other_node_pos(self, connection: UIConnection):
         if connection.source is self and connection.target is not None:
-            return connection.target.node.sceneBoundingRect().center()
+            return connection.target.ui_node.sceneBoundingRect().center()
 
         if connection.target is self:
-            return connection.source.node.sceneBoundingRect().center()
+            return connection.source.ui_node.sceneBoundingRect().center()
 
         return self.scene_center()
 

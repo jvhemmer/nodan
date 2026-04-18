@@ -1,9 +1,10 @@
 from dataclasses import dataclass
+from typing import Any
 from uuid import uuid4
 
 from PySide6.QtCore import QPointF
 
-from core.node_system import CoreNode
+from core.node_system import CoreNode, CorePort
 from core.operations import Operation, ConstantValue, DebugLog, MultiplyValue
 from ui.canvas import Canvas
 from core.graph import Graph, Executor
@@ -44,16 +45,24 @@ class Coordinator:
             definition=definition,
             params=self._default_params(definition),
             state={},
+            inputs=[],
+            outputs=[],
         )
         self.graph.add_node(node)
+        node.build_node_ports()
 
         ui_node = self._build_ui_node(node, pos)
         self.node_bindings[node.id] = UINodeBinding(core_node=node, ui_node=ui_node)
         return node.id
 
     def can_connect(self, source_port: UIPort, target_port: UIPort) -> bool:
-        source_node_id, source_kind, source_name = self.port_index[source_port]
-        target_node_id, target_kind, target_name = self.port_index[target_port]
+        source_node_id = source_port.ui_node.core_node.id
+        source_kind = source_port.core_port.kind
+        source_name = source_port.core_port.spec.name
+
+        target_node_id = target_port.ui_node.core_node.id
+        target_kind = target_port.core_port.kind
+        target_name = target_port.core_port.spec.name
 
         if source_kind != "output" or target_kind != "input":
             return False
@@ -92,13 +101,13 @@ class Coordinator:
         return False
 
     def connect_ports(self, source: UIPort, target: UIPort) -> None:
-        source_node_id, _, source_name = self.port_index[source]
-        target_node_id, _, target_name = self.port_index[target]
+        self.graph.connect(
+            source.core_port.node_id,
+            source.core_port.spec.name,
+            target.core_port.node_id,
+            target.core_port.spec.name,
+        )
 
-        # Connect them in Graph
-        self.graph.connect(source_node_id, source_name, target_node_id, target_name)
-
-        # Connect them in Canvas
         connection = UIConnection(source, target)
         self.canvas.scene().addItem(connection)
         source.add_connection(connection)
@@ -125,9 +134,9 @@ class Coordinator:
         node.params[name] = value
         self.executor.cache.clear()
 
-    def evaluate_node(self, node_id: str) -> dict:
+    def evaluate_node(self, node: CoreNode) -> dict:
         self.executor.cache.clear()
-        result = self.executor.evaluate_node(node_id)
+        result = self.executor.evaluate_node(node.id) # TODO: Change evaluate_node to use CoreNode instead of ID
         return result
 
     def handle_port_clicked(self, port: UIPort) -> None:
@@ -136,7 +145,7 @@ class Coordinator:
         pass
 
     def _build_ui_node(self, node: CoreNode, pos: QPointF) -> UINode:
-        ui_node = UINode(self.canvas, node.id, pos.x(), pos.y(), name=node.definition.title)
+        ui_node = UINode(self.canvas, node, pos.x(), pos.y(), name=node.definition.title)
         self.canvas.scene().addItem(ui_node)
         self.canvas.nodes.append(ui_node)
 
@@ -145,18 +154,45 @@ class Coordinator:
         for port in list(ui_node.outputs):
             ui_node.remove_port(port)
 
-        for port_spec in node.definition.get_input_ports(node):
-            port = ui_node.add_port("input")
-            port.name = port_spec.name
-            self.port_index[port] = (node.id, "input", port_spec.name)
+        for core_port in node.inputs:
+            print(core_port)
+            port = ui_node.add_port("input", core_port)
+            port.name = core_port.spec.name
 
-        for port_spec in node.definition.outputs:
-            port = ui_node.add_port("output")
-            port.name = port_spec.name
-            self.port_index[port] = (node.id, "output", port_spec.name)
+        for core_port in node.outputs:
+            print(core_port)
+            port = ui_node.add_port("output", core_port)
+            port.name = core_port.spec.name
 
         return ui_node
 
     def _default_params(self, definition: Operation) -> dict:
         specs = getattr(definition, "params", [])
         return {spec.name: spec.default for spec in specs}
+
+    def set_port_value(self, port: UIPort, raw_value: str) -> None:
+        core_port = port.core_port
+
+        if core_port.kind != "input":
+            raise ValueError("Only input ports can be edited")
+
+        if not core_port.spec.editable:
+            raise ValueError(f"Port '{core_port.spec.name}' is not editable")
+
+        if port.connections:
+            raise ValueError(f"Port '{core_port.spec.name}' is connected and cannot be edited")
+
+        core_port.value = self._parse_value(core_port.spec.data_type, raw_value)
+        self.executor.cache.clear()
+
+    def _parse_value(self, data_type: str, raw_value: str) -> Any:
+        if data_type == "number":
+            return float(raw_value) if "." in raw_value else int(raw_value)
+        if data_type == "bool":
+            return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+        if data_type == "string":
+            return raw_value
+        if data_type == "any":
+            return raw_value
+
+        return raw_value

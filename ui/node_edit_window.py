@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
+from ui.port import UIPort
+
 if TYPE_CHECKING:
     from ui.canvas import Canvas
 
@@ -9,10 +11,11 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QPushButton, QSiz
 
 from ui.node import UINode
 from ui.port_edit_row import PortEditRow
+from core.node_system import CoreNode
 
 
 class NodeEditWindow(QWidget):
-    evaluate_requested = Signal(str)
+    evaluate_requested = Signal(CoreNode)
     def __init__(self, node: UINode, parent: Canvas):
         super().__init__()
         self.canvas = parent
@@ -25,7 +28,7 @@ class NodeEditWindow(QWidget):
 
         self.meta_box = QGroupBox("Node")
         self.meta_layout = QVBoxLayout(self.meta_box)
-        self.name_edit = QLineEdit(self.meta_box)
+        self.name_edit = QLineEdit(self.node.name, self.meta_box)
         self.meta_layout.addWidget(self.name_edit)
 
         self.input_box = QGroupBox("Inputs")
@@ -49,7 +52,7 @@ class NodeEditWindow(QWidget):
         self.add_input_button.clicked.connect(lambda: self.add_port("input"))
         self.add_output_button.clicked.connect(lambda: self.add_port("output"))
         self.name_edit.editingFinished.connect(self.on_name_edit_changed)
-        self.evaluate_button.clicked.connect(lambda: self.evaluate_requested.emit(self.node.node_id))
+        self.evaluate_button.clicked.connect(lambda: self.evaluate_requested.emit(self.node.core_node))
 
         self.rebuild_rows()
 
@@ -89,6 +92,11 @@ class NodeEditWindow(QWidget):
 
         QTimer.singleShot(0, self.adjustSize)
 
+        row.value_changed.connect(self.on_port_value_changed)
+
+    def on_port_value_changed(self, port: UIPort, value: str):
+        self.canvas.coordinator.set_port_value(port, value)
+
     def add_port(self, kind):
         self.node.add_port(kind)
         self.rebuild_rows()
@@ -98,6 +106,7 @@ class NodeEditWindow(QWidget):
         self.rebuild_rows()
 
     def on_name_edit_changed(self):
+        # TODO: Change the CoreNode name as well
         self.node.change_label(self.name_edit.text())
         self.node.update()
         self.name_edit.clearFocus()

@@ -4,6 +4,7 @@ from typing import Any
 class PortSpec:
     name: str
     data_type: str
+    editable: bool = False
 
 @dataclass
 class ParamSpec:
@@ -72,15 +73,38 @@ class Operation:
             seen_outputs.add(port.name)
 
 @dataclass
-class CoreConnection:
-    source_node_id: str
-    source_port: str
-    target_node_id: str
-    target_port: str
-
-@dataclass
 class CoreNode:
     id: str
     definition: Operation
     params: dict[str, Any]
     state: dict[str, Any]
+    inputs: list[CorePort]
+    outputs: list[CorePort]
+
+    def build_node_ports(self) -> tuple[list[CorePort], list[CorePort]]:
+        inputs = [
+            CorePort(self.id, kind="input", spec=spec)
+            for spec in self.definition.get_input_ports(self)
+        ]
+        outputs = [
+            CorePort(self.id, kind="output", spec=spec)
+            for spec in self.definition.outputs
+        ]
+        self.inputs = inputs
+        self.outputs = outputs
+        return inputs, outputs
+
+@dataclass
+class CorePort:
+    # Not implemented
+    node_id: str
+    kind: str
+    spec: PortSpec
+    value: Any = None
+
+@dataclass
+class CoreConnection:
+    source_node_id: str
+    source_port: str
+    target_node_id: str
+    target_port: str

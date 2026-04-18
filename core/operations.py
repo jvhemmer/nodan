@@ -8,11 +8,12 @@ class ConstantValue(Operation):
     category = "Values"
 
     inputs = []
-    outputs = [PortSpec("value", "any")]
-    params = [ParamSpec("value", "any", 0)]
+    inputs = (PortSpec("value", "any", editable=True),)
+    outputs = (PortSpec("value", "any"),)
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
-        return {"value": params["value"]}
+        return {"value": inputs["value"]}
+
 
 class DebugLog(Operation):
     type_id = "debug.log"
