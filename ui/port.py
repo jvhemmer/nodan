@@ -57,8 +57,8 @@ class UIPort(QGraphicsObject):
 
     def paint(self, painter, option, widget=None):
         if self.kind == "input":
-            if self.core_port.spec.editable:
-                if self.connections:
+            if self.is_editable():
+                if self.has_connection():
                     painter.setBrush(QBrush(QColor("#a3be8c")))
                 else:
                     painter.setBrush(QBrush(QColor("#81A1C1")))
@@ -71,6 +71,15 @@ class UIPort(QGraphicsObject):
         painter.drawEllipse(self.boundingRect())
         if self.hovered or self.show_name:
             self.draw_name(painter)
+
+    def is_editable(self) -> bool:
+        return self.core_port.spec.editable
+
+    def has_connection(self) -> bool:
+        connected = False
+        if self.connections:
+            connected = True
+        return connected
 
     def scene_center(self):
         """Returns the center of the Port in Scene coordinates."""

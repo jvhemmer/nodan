@@ -33,6 +33,9 @@ class PortEditRow(QWidget):
         self.value_edit.editingFinished.connect(self.on_value_changed)
         self.remove_button.clicked.connect(self.on_remove_clicked)
 
+    def set_value_editable(self, editable: bool):
+        self.value_edit.setEnabled(editable)
+
     def on_value_changed(self):
         self.value_changed.emit(self.port, self.value_edit.text())
 

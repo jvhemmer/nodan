@@ -79,8 +79,13 @@ class NodeEditWindow(QWidget):
 
         QTimer.singleShot(0, self.adjustSize)
 
-    def add_port_row(self, port):
+    def add_port_row(self, port: UIPort):
         row = PortEditRow(port, self)
+
+        row.set_value_editable(False)
+        if port.is_editable() and not port.has_connection():
+            row.set_value_editable(True)
+
         row.remove_requested.connect(self.remove_port)
 
         self.rows[port] = row
