@@ -6,13 +6,13 @@ from core.node_system import Operation
 if TYPE_CHECKING:
     from coordinator.coordinator import Coordinator
 
-from PySide6.QtCore import QPoint, Qt, QPointF, QTimer, Signal
-from PySide6.QtGui import QAction, QCursor
+from PySide6.QtCore import QPoint, Qt, QPointF, Signal
+from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu
 
 from ui.node import UINode
 from ui.port import UIPort
-from ui.connection import UIConnection, UIConnectionTip
+from ui.connection import UIConnection
 from ui.node_edit_window import NodeEditWindow
 
 class Canvas(QGraphicsView):
@@ -20,7 +20,7 @@ class Canvas(QGraphicsView):
     port_clicked = Signal()
     def __init__(self):
         super().__init__()
-        self.coordinator = None
+        self.coordinator: Coordinator | None = None
         self.alt_held = None
         self.setMouseTracking(True)
 
@@ -47,16 +47,7 @@ class Canvas(QGraphicsView):
 
         self._last_context_pos = QPoint()
 
-        # self.debug_mode()
-
-    def debug_mode(self):
-        node = UINode(self, 0, 0, name='test')
-        self.scene().addItem(node)
-        self.nodes.append(node)
-
-    def get_cursor_pos(self) -> QPointF:
-        return self.mapToScene(self.mapFromGlobal(QCursor.pos()))
-
+    # === Nodes ===
     def remove_node(self, node: UINode):
         if node in self.nodes:
             self.nodes.remove(node)
@@ -69,7 +60,8 @@ class Canvas(QGraphicsView):
         scene_pos = self.mapToScene(self._last_context_pos)
         self.add_node_requested.emit(node_type, scene_pos)
 
-    def add_pending_connection(self, connection: UIConnection, target: UIPort):
+    # === Connections ===
+    def fulfill_pending_connection(self, connection: UIConnection, target: UIPort):
         if self.pending_source_port:
             source = self.pending_source_port
         else:
@@ -90,7 +82,6 @@ class Canvas(QGraphicsView):
         self.start_pending_connection(source)
 
     def start_pending_connection(self, port: UIPort):
-        # print(f"Started connection from {port.parent.label.text()}")
         connection = UIConnection(port)
         connection.set_drag_pos(self.get_cursor_pos())
         self.scene().addItem(connection)
@@ -98,16 +89,21 @@ class Canvas(QGraphicsView):
         self.pending_source_port = port
         self.pending_connection = connection
 
+    def detach_connection(self, connection: UIConnection):
+        source = connection.source
+        connection.delete()
+        self.start_pending_connection(source)
+
     def clear_pending_connection(self):
         self.pending_connection = None
         self.pending_source_port = None
 
     def cancel_pending_connection(self) -> None:
         if self.pending_connection is not None:
-            # print(f"Canceled connection from {self.pending_connection.source.parent.label.text()}")
             self.scene().removeItem(self.pending_connection)
             self.clear_pending_connection()
 
+    # === Ports ===
     def handle_port_click(self, port: UIPort):
         if self.pending_connection is None:
             # If there's no pending connection
@@ -124,6 +120,9 @@ class Canvas(QGraphicsView):
         source = self.pending_source_port
         target = port
 
+        if not self.coordinator:
+            raise ValueError("Canvas must have a reference to Coordinator prior to UI initialization.")
+
         if not self.coordinator.can_connect(source, target):
             return
 
@@ -138,7 +137,7 @@ class Canvas(QGraphicsView):
                     port.show_name = value
                     port.update()
 
-    # Key/Mouse Events
+    # === Key/Mouse Events ===
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             item = self.itemAt(event.pos())
@@ -163,7 +162,6 @@ class Canvas(QGraphicsView):
 
         menu = QMenu()
 
-        # TODO: Tidy this up
         for type_id, op_cls in Operation.registry.items():
             action = menu.addAction(f"Add {op_cls.title} node")
             action.triggered.connect(lambda checked=False,node_type=type_id: self.add_node_at_context_pos(node_type))
@@ -259,3 +257,7 @@ class Canvas(QGraphicsView):
             event.accept()
             return
         super().keyReleaseEvent(event)
+
+    # === Helpers ===
+    def get_cursor_pos(self) -> QPointF:
+        return self.mapToScene(self.mapFromGlobal(QCursor.pos()))
