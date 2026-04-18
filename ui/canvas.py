@@ -32,7 +32,7 @@ class Canvas(QGraphicsView):
         self.nodes = []
 
         self.pending_connection: UIConnection | None = None
-        self.pending_source_port = None
+        self.pending_source_port: UIPort | None = None
 
         self.node_edit_windows = []
 
@@ -70,13 +70,14 @@ class Canvas(QGraphicsView):
         self.add_node_requested.emit(node_type, scene_pos)
 
     def add_pending_connection(self, connection: UIConnection, target: UIPort):
-        source = self.pending_source_port
-
+        if self.pending_source_port:
+            source = self.pending_source_port
+        else:
+            raise ValueError("Attempted to connect without a source port.")
         connection.set_target_port(target)
         connection.tip.clicked.connect(self.detach_connection)
         source.add_connection(connection)
         target.add_connection(connection)
-        # print(f"Connected to {target.parent.label.text()}")
         self.clear_pending_connection()
 
     def detach_connection(self, connection: UIConnection):
