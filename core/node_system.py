@@ -73,6 +73,13 @@ class Operation:
             seen_outputs.add(port.name)
 
 @dataclass
+class CorePort:
+    node_id: str
+    kind: str
+    spec: PortSpec
+    value: Any = None
+
+@dataclass
 class CoreNode:
     id: str
     definition: Operation
@@ -93,14 +100,6 @@ class CoreNode:
         self.inputs = inputs
         self.outputs = outputs
         return inputs, outputs
-
-@dataclass
-class CorePort:
-    # Not implemented
-    node_id: str
-    kind: str
-    spec: PortSpec
-    value: Any = None
 
 @dataclass
 class CoreConnection:

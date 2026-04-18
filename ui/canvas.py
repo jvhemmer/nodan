@@ -15,6 +15,7 @@ from ui.port import UIPort
 from ui.connection import UIConnection
 from ui.node_edit_window import NodeEditWindow
 
+
 class Canvas(QGraphicsView):
     add_node_requested = Signal(str, QPointF)
     port_clicked = Signal()
@@ -76,7 +77,11 @@ class Canvas(QGraphicsView):
         source = connection.source
         target = connection.target
 
-        self.coordinator.disconnect_ports(source, target)
+        if not self.coordinator:
+            raise ValueError("Canvas must have a reference to Coordinator prior to UI initialization.")
+
+        if target:
+            self.coordinator.disconnect_ports(source, target)
 
         connection.delete()
         self.start_pending_connection(source)
@@ -88,11 +93,6 @@ class Canvas(QGraphicsView):
 
         self.pending_source_port = port
         self.pending_connection = connection
-
-    def detach_connection(self, connection: UIConnection):
-        source = connection.source
-        connection.delete()
-        self.start_pending_connection(source)
 
     def clear_pending_connection(self):
         self.pending_connection = None
