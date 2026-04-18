@@ -53,7 +53,12 @@ class UIPort(QGraphicsObject):
             text_pos = QPointF(7.5, -7.5)
         else:
             text_pos = QPointF(7.5, self.boundingRect().height() / 2 + 7.5)
-        painter.drawText(text_pos, self.name)
+
+        if self.core_port.value:
+            text = f"{self.name} = {self.core_port.value}"
+        else:
+            text = self.name
+        painter.drawText(text_pos, text)
 
     def paint(self, painter, option, widget=None):
         if self.kind == "input":

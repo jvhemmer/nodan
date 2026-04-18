@@ -49,5 +49,10 @@ class Executor:
                     break
 
         outputs = node.definition.evaluate(resolved_inputs, node.params)
+
+        # Assign values to outputs
+        for output_port in node.outputs:
+            output_port.value = outputs.get(output_port.spec.name)
+
         self.cache[node_id] = outputs
         return outputs

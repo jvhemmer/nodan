@@ -45,5 +45,5 @@ class MultiplyValue(Operation):
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         result = 1
         for value in inputs.values():
-            result *= value
+            result *= float(value)
         return {"result": result}
