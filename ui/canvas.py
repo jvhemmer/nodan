@@ -82,6 +82,10 @@ class Canvas(QGraphicsView):
 
     def detach_connection(self, connection: UIConnection):
         source = connection.source
+        target = connection.target
+
+        self.coordinator.disconnect_ports(source, target)
+
         connection.delete()
         self.start_pending_connection(source)
 

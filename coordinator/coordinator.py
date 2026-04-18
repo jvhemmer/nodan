@@ -113,6 +113,19 @@ class Coordinator:
         source.add_connection(connection)
         target.add_connection(connection)
 
+    def disconnect_ports(self, source: UIPort, target: UIPort) -> None:
+        self.graph.connections = [
+            c for c in self.graph.connections
+            if not (
+                c.source_node_id == source.core_port.node_id
+                and c.source_port == source.core_port.spec.name
+                and c.target_node_id == target.core_port.node_id
+                and c.target_port == target.core_port.spec.name
+            )
+        ]
+        self.executor.cache.clear()
+
+
     def remove_node(self, node_id: str) -> None:
         binding = self.node_bindings.pop(node_id, None)
         if binding is None:
