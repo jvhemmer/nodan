@@ -62,10 +62,10 @@ class Canvas(QGraphicsView):
             self.nodes.remove(node)
 
         self.scene().removeItem(node)
-
         node.delete()
 
     def add_node_at_context_pos(self, node_type: str):
+        print(node_type)
         scene_pos = self.mapToScene(self._last_context_pos)
         self.add_node_requested.emit(node_type, scene_pos)
 
@@ -161,12 +161,8 @@ class Canvas(QGraphicsView):
         # TODO: Tidy this up
         for type_id, op_cls in Operation.registry.items():
             action = menu.addAction(f"Add {op_cls.title} node")
-            action.triggered.connect(lambda: self.add_node_at_context_pos(type_id))
+            action.triggered.connect(lambda checked=False,node_type=type_id: self.add_node_at_context_pos(node_type))
 
-        # add_constval_action = menu.addAction("Add ConstantValue node")
-        # add_constval_action.triggered.connect(lambda: self.add_node_at_context_pos("value.constant"))
-        # add_debuglog_action = menu.addAction("Add DebugLog node")
-        # add_debuglog_action.triggered.connect(lambda: self.add_node_at_context_pos("debug.log"))
         menu.exec(event.globalPos())
 
     def wheelEvent(self, event):
