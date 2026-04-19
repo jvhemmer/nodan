@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
 
-        self.new_action = file_menu.addAction("New...")
+        self.new_action = file_menu.addAction("New")
         self.open_action = file_menu.addAction("Open...")
         file_menu.addSeparator()
         self.save_action = file_menu.addAction("Save")
