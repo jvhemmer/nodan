@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from coordinator.coordinator import Coordinator
 
 from PySide6.QtCore import QPoint, Qt, QPointF, Signal
-from PySide6.QtGui import QCursor
+from PySide6.QtGui import QCursor, QPainter
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu
 
 from ui.node import UINode
@@ -40,7 +40,7 @@ class Canvas(QGraphicsView):
         self._scene = QGraphicsScene()
         self.setScene(self._scene)
 
-        self.setRenderHint(self.renderHints())
+        self.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         self.setSceneRect(-2000, -2000, 4000, 4000)
 
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
