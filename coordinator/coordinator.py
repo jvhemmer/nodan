@@ -376,13 +376,20 @@ class Coordinator:
             binding.ui_node.sync_port_widgets()
 
     def _parse_value(self, data_type: str, raw_value: str) -> Any:
-        if data_type == "number":
-            return float(raw_value) if "." in raw_value else int(raw_value)
+        value = raw_value.strip()
+
+        if data_type == "scalar":
+            if value == "":
+                return None
+            try:
+                return float(value) if "." in value else int(value)
+            except ValueError:
+                return value
+
         if data_type == "bool":
-            return raw_value.strip().lower() in {"1", "true", "yes", "on"}
-        if data_type == "string":
-            return raw_value
-        if data_type == "any":
+            return value.lower() in {"1", "true", "yes", "on"}
+
+        if data_type in {"text", "string", "object", "any"}:
             return raw_value
 
         return raw_value
