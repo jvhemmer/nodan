@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu
 
 from ui.node import UINode
 from ui.port import UIPort
-from ui.connection import UIConnection
+from ui.connection import UIConnection, UIConnectionTip
 from ui.node_edit_window import NodeEditWindow
 
 
@@ -237,10 +237,12 @@ class Canvas(QGraphicsView):
             scene_pos = self.mapToScene(event.pos())
             items = self.scene().items(scene_pos)
             for item in items:
-                if isinstance(item, UIConnection):
-                    self.detach_connection(item)
+                if isinstance(item, UIConnectionTip):
+                    self.detach_connection(item.connection)
                     event.accept()
                     return
+                if isinstance(item, UIConnection):
+                    break
 
         super().mousePressEvent(event)
 

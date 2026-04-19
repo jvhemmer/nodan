@@ -14,7 +14,7 @@ class UIConnectionTip(QGraphicsObject):
     def __init__(self, parent: UIConnection):
         super().__init__(parent)
 
-        self.connection = parent
+        self.connection: UIConnection = parent
         self.radius = self.connection.thickness
         self.hovered = False
 
