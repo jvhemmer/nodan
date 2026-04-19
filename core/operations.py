@@ -11,8 +11,8 @@ class ConstantValue(Operation):
     title = "Constant"
     category = "Values"
 
-    input_spec = (PortSpec("value", "any", editable=True),)
-    output_spec = (PortSpec("value", "any"),)
+    input_spec = (PortSpec("value", "object", editable=True),)
+    output_spec = (PortSpec("value", "object"),)
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         return {"value": inputs["value"]}
@@ -22,7 +22,7 @@ class DebugLog(Operation):
     title = "Debug Log"
     category = "Debug"
 
-    input_spec = (PortSpec("value", "any"),)
+    input_spec = (PortSpec("value", "object"),)
     output_spec = ()
     params = []
 
@@ -36,12 +36,12 @@ class MultiplyValue(Operation):
 
     repeated_inputs = RepeatedInputSpec(
         base_name="value",
-        data_type="numeric",
+        data_type="scalar",
         min_count=2,
         default_count=2,
     )
 
-    output_spec = (PortSpec("result", "numeric"),)
+    output_spec = (PortSpec("result", "scalar"),)
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         result = 1
@@ -55,12 +55,12 @@ class ReadCSV(Operation):
     category = "Files"
 
     input_spec = (
-        PortSpec("file_path", "string", editable=True),
-        PortSpec("separator", "string", default=",", editable=True),
-        PortSpec("comment", "string", default="%", editable=True),
-        PortSpec("header", "numeric", default=None, editable=True),
+        PortSpec("file_path", "text", editable=True),
+        PortSpec("separator", "text", default=",", editable=True),
+        PortSpec("comment", "text", default="%", editable=True),
+        PortSpec("header", "scalar", default=None, editable=True),
     )
-    output_spec = (PortSpec("result", "array[numeric]"),)
+    output_spec = (PortSpec("result", "dataframe"),)
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         file_path = inputs["file_path"]
@@ -89,13 +89,13 @@ class FilterColumns(Operation):
 
     repeated_inputs = RepeatedInputSpec(
         base_name="column",
-        data_type="str | int",
+        data_type="object",
         min_count=1,
         default_count=1,
         editable=True
     )
 
-    output_spec = (PortSpec("result", "series"),)
+    output_spec = (PortSpec("result", "dataframe"),)
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         df = inputs["dataframe"]
@@ -121,12 +121,12 @@ class PlotXY(Operation):
     category = "Plot"
 
     input_spec = (
-        PortSpec("x", "numeric"),
+        PortSpec("x", "object"),
     )
 
     repeated_inputs = RepeatedInputSpec(
         base_name="y",
-        data_type="numeric",
+        data_type="object",
         min_count=1,
         default_count=1,
         editable=True
