@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pandas as pd
+
 from PySide6.QtGui import QBrush, QColor, QPen
 from PySide6.QtWidgets import (
     QGraphicsItem,
@@ -131,7 +133,7 @@ class UINode(QGraphicsRectItem):
             label_item.setText(port.name)
             widget = proxy.widget()
             if isinstance(widget, QLineEdit):
-                text = "" if port.core_port.value is None else str(port.core_port.value)
+                text = self._format_port_value(port.core_port.value)
                 if widget.text() != text:
                     widget.setText(text)
                 widget.setReadOnly(not (port.is_editable() and not port.has_connection()))
@@ -140,11 +142,7 @@ class UINode(QGraphicsRectItem):
             label_item.setText(port.name)
             widget = proxy.widget()
             if isinstance(widget, QLineEdit):
-                value = port.core_port.value
-                if value is None:
-                    text = ""
-                else:
-                    text = str(value)
+                text = self._format_port_value(port.core_port.value)
                 if widget.text() != text:
                     widget.setText(text)
 
@@ -224,6 +222,14 @@ class UINode(QGraphicsRectItem):
             if isinstance(widget, QLineEdit):
                 widths.append(widget.sizeHint().width())
         return max(widths)
+
+    def _format_port_value(self, value) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, pd.DataFrame):
+            rows, cols = value.shape
+            return f"{rows}x{cols} DataFrame"
+        return str(value)
 
     def register_port(self, port: UIPort):
         port.clicked.connect(self.view.handle_port_click)
