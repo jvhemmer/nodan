@@ -22,35 +22,32 @@ class Executor:
             return self.cache[node_id]
 
         node = self.graph.nodes[node_id]
-        resolved_inputs = {}
+        resolved_inputs: dict[str, Any] = {}
 
-        for input_spec in node.definition.get_input_ports(node):
+        for input_port in node.inputs:
+            input_name = input_port.spec.name
             matching_connection = None
 
             for connection in self.graph.connections:
-                # If the current node is the target of a connection,
-                # that means there are nodes upstream to evaluate
                 is_correct_target_node = connection.target_node_id == node_id
-                is_correct_target_port = connection.target_port == input_spec.name
+                is_correct_target_port = connection.target_port == input_name
 
                 if is_correct_target_node and is_correct_target_port:
                     matching_connection = connection
                     break
 
-            if matching_connection:
+            if matching_connection is not None:
                 upstream_outputs = self.evaluate_node(matching_connection.source_node_id)
-                resolved_inputs[input_spec.name] = upstream_outputs[matching_connection.source_port]
+                value = upstream_outputs[matching_connection.source_port]
+                input_port.value = value
+                resolved_inputs[input_name] = value
+                continue
 
-            for input_port in node.inputs:
-                # If unconnected, fall back to port.value
-                is_same_port = input_port.spec.name == input_spec.name
-                if is_same_port and input_port.value is not None:
-                    resolved_inputs[input_spec.name] = input_port.value
-                    break
+            if input_port.value is not None:
+                resolved_inputs[input_name] = input_port.value
 
         outputs = node.definition.evaluate(resolved_inputs, node.params)
 
-        # Assign values to outputs
         for output_port in node.outputs:
             output_port.value = outputs.get(output_port.spec.name)
 

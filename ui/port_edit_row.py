@@ -27,7 +27,8 @@ class PortEditRow(QWidget):
         layout.addWidget(self.name_edit, 1)
         layout.addWidget(self.value_label, 1)
         layout.addWidget(self.value_edit, 1)
-        layout.addWidget(self.remove_button)
+        if port.ui_node.core_node.definition.repeated_inputs:
+            layout.addWidget(self.remove_button)
 
         self.name_edit.editingFinished.connect(self.on_name_changed)
         self.value_edit.editingFinished.connect(self.on_value_changed)

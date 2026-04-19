@@ -7,9 +7,8 @@ class ConstantValue(Operation):
     title = "Constant"
     category = "Values"
 
-    inputs = []
-    inputs = (PortSpec("value", "any", editable=True),)
-    outputs = (PortSpec("value", "any"),)
+    input_spec = (PortSpec("value", "any", editable=True),)
+    output_spec = (PortSpec("value", "any"),)
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         return {"value": inputs["value"]}
@@ -17,11 +16,11 @@ class ConstantValue(Operation):
 
 class DebugLog(Operation):
     type_id = "debug.log"
-    title = "Log"
+    title = "Debug Log"
     category = "Debug"
 
-    inputs = [PortSpec("value", "any")]
-    outputs = []
+    input_spec = (PortSpec("value", "any"))
+    output_spec = ()
     params = []
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
@@ -40,7 +39,7 @@ class MultiplyValue(Operation):
         default_count=2,
     )
 
-    outputs = (PortSpec("result", "number"),)
+    output_spec = (PortSpec("result", "number"),)
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         result = 1

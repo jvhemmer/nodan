@@ -44,9 +44,11 @@ class NodeEditWindow(QWidget):
 
         self.layout.addWidget(self.meta_box)
         self.layout.addWidget(self.input_box)
-        self.layout.addWidget(self.add_input_button)
+        if node.core_node.definition.repeated_inputs:
+            self.layout.addWidget(self.add_input_button)
         self.layout.addWidget(self.output_box)
-        self.layout.addWidget(self.add_output_button)
+        if node.core_node.definition.repeated_inputs:
+            self.layout.addWidget(self.add_output_button)
         self.layout.addWidget(self.evaluate_button)
 
         self.add_input_button.clicked.connect(lambda: self.add_port("input"))

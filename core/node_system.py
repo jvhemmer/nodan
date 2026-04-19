@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
+
+
 @dataclass
 class PortSpec:
     name: str
@@ -26,8 +28,8 @@ class Operation:
     title = ""
     category = "General"
 
-    inputs: tuple[PortSpec, ...] = ()
-    outputs: tuple[PortSpec, ...] = ()
+    input_spec: tuple[PortSpec, ...] = ()
+    output_spec: tuple[PortSpec, ...] = ()
     repeated_inputs: RepeatedInputSpec | None = None
 
     def __init__(self):
@@ -100,6 +102,18 @@ class CoreNode:
         self.inputs = inputs
         self.outputs = outputs
         return inputs, outputs
+
+    def get_input_port(self, name: str) -> CorePort | None:
+        for port in self.inputs:
+            if port.spec.name == name:
+                return port
+        return None
+
+    def get_output_port(self, name: str) -> CorePort | None:
+        for port in self.outputs:
+            if port.spec.name == name:
+                return port
+        return None
 
 @dataclass
 class CoreConnection:
