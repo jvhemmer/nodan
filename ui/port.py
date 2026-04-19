@@ -28,9 +28,9 @@ class UIPort(QGraphicsObject):
         self.radius = radius
         self.name = name
 
-        self.text_painter = QPainter()
-
         self.connections = []
+
+        self.text_painter = QPainter()
 
         self.hovered = False
         self.threshold = 25
@@ -38,10 +38,13 @@ class UIPort(QGraphicsObject):
         self._outside = False
         self.show_name = False
 
+        self._connected_brush = QBrush(QColor("#a3be8c"))
+        self._empty_editable_brush = QBrush(QColor("#81A1C1"))
+        self._filled_editable_brush = QBrush(QColor("#262626"))
+        self._output_brush = QBrush(QColor("#d08770"))
+
         self.setPos(x, y)
-
         self.setZValue(1)
-
         self.setAcceptHoverEvents(True)
 
     def boundingRect(self):
@@ -53,17 +56,18 @@ class UIPort(QGraphicsObject):
 
     def paint(self, painter, option, widget=None):
         if self.kind == "input":
-            if self.is_editable():
-                if self.has_connection():
-                    painter.setBrush(QBrush(QColor("#a3be8c")))
-                else:
-                    painter.setBrush(QBrush(QColor("#81A1C1")))
+            if not self.is_editable():
+                painter.setBrush(self._connected_brush)
+            elif self.has_connection():
+                painter.setBrush(self._connected_brush)
+            elif self.has_assigned_value():
+                painter.setBrush(self._filled_editable_brush)
             else:
-                painter.setBrush(QBrush(QColor("#a3be8c")))
+                painter.setBrush(self._empty_editable_brush)
         else:
-            painter.setBrush(QBrush(QColor("#d08770")))
+            painter.setBrush(self._output_brush)
 
-        painter.setPen(QPen(QColor("#2e3440"), 2))
+        painter.setPen(self.ui_node._outline_pen)
         painter.drawEllipse(self.boundingRect())
         if self.hovered or self.show_name:
             self.draw_name(painter)
@@ -76,6 +80,9 @@ class UIPort(QGraphicsObject):
         if self.connections:
             connected = True
         return connected
+
+    def has_assigned_value(self) -> bool:
+        return self.core_port.value is not None
 
     def scene_center(self):
         """Returns the center of the Port in Scene coordinates."""
