@@ -57,7 +57,6 @@ class Canvas(QGraphicsView):
         node.delete()
 
     def add_node_at_context_pos(self, node_type: str):
-        print(node_type)
         scene_pos = self.mapToScene(self._last_context_pos)
         self.add_node_requested.emit(node_type, scene_pos)
 

@@ -50,8 +50,6 @@ class MultiplyValue(Operation):
 
         result = values[0]
         for value in values[1:]:
-            print(result)
-            print(type(value))
             result = result * value
         return {"result": result}
 
@@ -110,9 +108,6 @@ class FilterColumns(Operation):
             for name, value in inputs.items()
             if name.startswith("column")
         ]
-
-        print(df.columns.tolist())
-        print(columns)
 
         if all(isinstance(col, int) for col in columns):
             filtered = df.iloc[:, columns]
