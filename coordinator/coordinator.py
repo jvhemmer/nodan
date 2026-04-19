@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import json
 from typing import Any
 from uuid import uuid4
 
@@ -36,15 +37,28 @@ class Coordinator:
         self.canvas.add_node_requested.connect(self.add_node_by_type)
 
     def add_node_by_type(self, type_id: str, pos: QPointF) -> str:
+        node = self._create_node(type_id, pos)
+        return node.id
+
+    def _create_node(
+            self,
+            type_id: str,
+            pos: QPointF,
+            *,
+            node_id: str | None = None,
+            state: dict[str, Any] | None = None,
+            params: dict[str, Any] | None = None,
+            ui_name: str | None = None,
+    ) -> CoreNode:
         # Instantiate the definition
         definition_cls = Operation.registry[type_id]
         definition = definition_cls()
 
         node = CoreNode(
-            id=str(uuid4()),
+            id=node_id or str(uuid4()),
             definition=definition,
-            params=self._default_params(definition),
-            state={},
+            params=params or self._default_params(definition),
+            state=dict(state or {}),
             inputs=[],
             outputs=[],
         )
@@ -52,8 +66,10 @@ class Coordinator:
         node.build_node_ports()
 
         ui_node = self._build_ui_node(node, pos)
+        if ui_name is not None:
+            ui_node.change_label(ui_name)
         self.node_bindings[node.id] = UINodeBinding(core_node=node, ui_node=ui_node)
-        return node.id
+        return node
 
     def can_connect(self, source_port: UIPort, target_port: UIPort) -> bool:
         source_node_id = source_port.ui_node.core_node.id
@@ -145,6 +161,98 @@ class Coordinator:
             self.port_index.pop(port, None)
 
         self.canvas.remove_node(binding.ui_node)
+
+    def clear(self) -> None:
+        for node_id in list(self.node_bindings.keys()):
+            self.remove_node(node_id)
+        self.graph.connections.clear()
+        self.graph.nodes.clear()
+        self.executor.cache.clear()
+        self.canvas.clear_pending_connection()
+
+    def save_to_file(self, path: str) -> None:
+        with open(path, "w", encoding="utf-8") as file:
+            json.dump(self.serialize_graph(), file, indent=2)
+
+    def load_from_file(self, path: str) -> None:
+        with open(path, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        self.load_graph(data)
+
+    def serialize_graph(self) -> dict[str, Any]:
+        nodes: list[dict[str, Any]] = []
+        for node_id, binding in self.node_bindings.items():
+            core_node = binding.core_node
+            ui_node = binding.ui_node
+            local_input_values = {
+                port.spec.name: self._serialize_value(port.value)
+                for port in core_node.inputs
+                if port.spec.editable and not self._input_already_connected(core_node.id, port.spec.name)
+            }
+            nodes.append(
+                {
+                    "id": node_id,
+                    "type_id": core_node.definition.type_id,
+                    "name": ui_node.name,
+                    "x": ui_node.pos().x(),
+                    "y": ui_node.pos().y(),
+                    "state": core_node.state,
+                    "params": core_node.params,
+                    "input_values": local_input_values,
+                }
+            )
+
+        connections = [
+            {
+                "source_node_id": connection.source_node_id,
+                "source_port": connection.source_port,
+                "target_node_id": connection.target_node_id,
+                "target_port": connection.target_port,
+            }
+            for connection in self.graph.connections
+        ]
+
+        return {
+            "nodes": nodes,
+            "connections": connections,
+        }
+
+    def load_graph(self, data: dict[str, Any]) -> None:
+        self.clear()
+
+        for node_data in data.get("nodes", []):
+            node = self._create_node(
+                node_data["type_id"],
+                QPointF(node_data.get("x", 0), node_data.get("y", 0)),
+                node_id=node_data["id"],
+                state=node_data.get("state", {}),
+                params=node_data.get("params", {}),
+                ui_name=node_data.get("name"),
+            )
+
+            input_values = node_data.get("input_values", {})
+            for port_name, value in input_values.items():
+                port = node.get_input_port(port_name)
+                if port is not None:
+                    port.value = value
+
+            binding = self.node_bindings[node.id]
+            binding.ui_node.sync_port_widgets()
+
+        for connection_data in data.get("connections", []):
+            source_binding = self.node_bindings.get(connection_data["source_node_id"])
+            target_binding = self.node_bindings.get(connection_data["target_node_id"])
+            if source_binding is None or target_binding is None:
+                continue
+
+            source_port = self._find_ui_port(source_binding.ui_node.outputs, connection_data["source_port"])
+            target_port = self._find_ui_port(target_binding.ui_node.inputs, connection_data["target_port"])
+            if source_port is None or target_port is None:
+                continue
+
+            self.connect_ports(source_port, target_port)
+
+        self._refresh_all_nodes()
 
     def update_node_param(self, node_id: str, name: str, value) -> None:
         node = self.graph.nodes[node_id]
@@ -278,3 +386,18 @@ class Coordinator:
             return raw_value
 
         return raw_value
+
+    def _find_ui_port(self, ports: list[UIPort], port_name: str) -> UIPort | None:
+        for port in ports:
+            if port.core_port.spec.name == port_name:
+                return port
+        return None
+
+    def _serialize_value(self, value: Any) -> Any:
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        if isinstance(value, list):
+            return [self._serialize_value(item) for item in value]
+        if isinstance(value, dict):
+            return {key: self._serialize_value(item) for key, item in value.items()}
+        raise TypeError(f"Cannot serialize value of type {type(value).__name__}")
