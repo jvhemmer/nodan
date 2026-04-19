@@ -103,8 +103,8 @@ class UIConnection(QGraphicsPathItem):
 
         path = QPainterPath(start)
         path.cubicTo(
-            QPointF(start.x(), start.y() + offset),
-            QPointF(end.x(), end.y() - offset),
+            QPointF(start.x() + offset, start.y()),
+            QPointF(end.x() - offset, end.y()),
             end,
         )
         self.setPath(path)

@@ -112,6 +112,8 @@ class Coordinator:
         self.canvas.scene().addItem(connection)
         source.add_connection(connection)
         target.add_connection(connection)
+        source.ui_node.sync_port_widgets()
+        target.ui_node.sync_port_widgets()
 
     def disconnect_ports(self, source: UIPort, target: UIPort) -> None:
         self.graph.connections = [
@@ -124,6 +126,8 @@ class Coordinator:
             )
         ]
         self.executor.cache.clear()
+        source.ui_node.sync_port_widgets()
+        target.ui_node.sync_port_widgets()
 
 
     def remove_node(self, node_id: str) -> None:
@@ -150,6 +154,7 @@ class Coordinator:
     def evaluate_node(self, node: CoreNode) -> dict:
         self.executor.cache.clear()
         result = self.executor.evaluate_node(node.id) # TODO: Change evaluate_node to use CoreNode instead of ID
+        self._refresh_all_nodes()
         return result
 
     def add_repeated_input(self, node: CoreNode) -> None:
@@ -229,12 +234,10 @@ class Coordinator:
             ui_node.remove_port(port)
 
         for core_port in node.inputs:
-            print(core_port)
             port = ui_node.add_port("input", core_port)
             port.name = core_port.spec.name
 
         for core_port in node.outputs:
-            print(core_port)
             port = ui_node.add_port("output", core_port)
             port.name = core_port.spec.name
 
@@ -258,6 +261,11 @@ class Coordinator:
 
         core_port.value = self._parse_value(core_port.spec.data_type, raw_value)
         self.executor.cache.clear()
+        port.ui_node.sync_port_widgets()
+
+    def _refresh_all_nodes(self) -> None:
+        for binding in self.node_bindings.values():
+            binding.ui_node.sync_port_widgets()
 
     def _parse_value(self, data_type: str, raw_value: str) -> Any:
         if data_type == "number":

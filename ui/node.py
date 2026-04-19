@@ -1,32 +1,44 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from ui.canvas import Canvas
-    from core.node_system import CoreNode, CorePort
-
-from PySide6.QtCore import Signal
-
-
 
 from PySide6.QtGui import QBrush, QColor, QPen
-from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsSimpleTextItem, QGraphicsItem, QMenu
+from PySide6.QtWidgets import (
+    QGraphicsItem,
+    QGraphicsProxyWidget,
+    QGraphicsRectItem,
+    QGraphicsSimpleTextItem,
+    QLineEdit,
+    QMenu,
+)
 
 from ui.port import UIPort
-from ui.connection import UIConnection
+
+if TYPE_CHECKING:
+    from core.node_system import CoreNode, CorePort
+    from ui.canvas import Canvas
 
 
 class UINode(QGraphicsRectItem):
-    # remove_requested = Signal(object) # QGraphicsObject
-
-    def __init__(self, parent: Canvas, core_node: CoreNode, x=0, y=0, width=140, height=70, name="Node"):
+    def __init__(self, parent: Canvas, core_node: CoreNode, x=0, y=0, width=380, height=140, name="Node"):
         super().__init__(0, 0, width, height)
         self.view = parent
         self.core_node = core_node
 
-        self.inputs = []
-        self.outputs = []
+        self.inputs: list[UIPort] = []
+        self.outputs: list[UIPort] = []
+        self._input_widgets: dict[UIPort, tuple[QGraphicsSimpleTextItem, QGraphicsProxyWidget]] = {}
+        self._output_widgets: dict[UIPort, tuple[QGraphicsSimpleTextItem, QGraphicsProxyWidget]] = {}
         self._last_context_pos = None
         self.name = name
+
+        self._content_margin = 16
+        self._title_height = 28
+        self._row_height = 26
+        self._horizontal_gap = 12
+        self._field_height = 24
+        self._min_label_width = 60
+        self._field_width = 100
 
         self.setPos(x, y)
 
@@ -41,10 +53,9 @@ class UINode(QGraphicsRectItem):
 
         self.label = QGraphicsSimpleTextItem(self)
         self.label.setBrush(QBrush(QColor("#eceff4")))
-        self.label.setPos(12, 10)
+        self.label.setPos(self._content_margin, 10)
         self.change_label(name)
 
-    # TODO: Standardize how labeling is done in all classes
     def change_label(self, label: str):
         self.name = label
         self.label.setText(label)
@@ -54,11 +65,13 @@ class UINode(QGraphicsRectItem):
             self.remove_port(port)
 
     def add_port(self, kind: str, core_port: CorePort) -> UIPort:
-        port = UIPort(self, kind, core_port, 0, 0)
+        port = UIPort(self, kind, core_port, 0, 0, name=core_port.spec.name)
         if kind == "input":
             self.inputs.append(port)
+            self._input_widgets[port] = self._create_input_widgets(port)
         else:
             self.outputs.append(port)
+            self._output_widgets[port] = self._create_output_widgets(port)
         self.register_port(port)
         self.layout_ports()
         return port
@@ -73,54 +86,161 @@ class UINode(QGraphicsRectItem):
 
         ports.remove(port)
 
+        widgets = self._input_widgets if port.kind == "input" else self._output_widgets
+        label_item, proxy = widgets.pop(port)
         scene = self.scene()
         if scene is not None:
+            scene.removeItem(label_item)
+            scene.removeItem(proxy)
             scene.removeItem(port)
 
         self.layout_ports()
 
-    def layout_ports(self):
-        rect = self.rect()
-        self._layout_port_group(self.inputs, rect.top())
-        self._layout_port_group(self.outputs, rect.bottom())
+    def _create_input_widgets(self, port: UIPort) -> tuple[QGraphicsSimpleTextItem, QGraphicsProxyWidget]:
+        label_item = QGraphicsSimpleTextItem(port.name, self)
+        label_item.setBrush(QBrush(QColor("#eceff4")))
 
-    def _layout_port_group(self, ports, y):
-        if not ports:
+        line_edit = QLineEdit()
+        line_edit.setPlaceholderText("value")
+        proxy = QGraphicsProxyWidget(self)
+        proxy.setWidget(line_edit)
+
+        line_edit.editingFinished.connect(lambda p=port, w=line_edit: self._on_input_edited(p, w))
+        return label_item, proxy
+
+    def _create_output_widgets(self, port: UIPort) -> tuple[QGraphicsSimpleTextItem, QGraphicsProxyWidget]:
+        label_item = QGraphicsSimpleTextItem(port.name, self)
+        label_item.setBrush(QBrush(QColor("#eceff4")))
+
+        value_edit = QLineEdit()
+        value_edit.setReadOnly(True)
+        proxy = QGraphicsProxyWidget(self)
+        proxy.setWidget(value_edit)
+        return label_item, proxy
+
+    def _on_input_edited(self, port: UIPort, widget: QLineEdit) -> None:
+        if not port.is_editable() or port.has_connection():
+            self.sync_port_widgets()
             return
+        self.view.coordinator.set_port_value(port, widget.text())
+        widget.clearFocus()
+        self.sync_port_widgets()
 
-        rect = self.rect()
-        step = rect.width() / (len(ports) + 1)
-        for i, port in enumerate(ports):
-            port.setPos(step * (i + 1), y)
+    def sync_port_widgets(self) -> None:
+        for port, (label_item, proxy) in self._input_widgets.items():
+            label_item.setText(port.name)
+            widget = proxy.widget()
+            if isinstance(widget, QLineEdit):
+                text = "" if port.core_port.value is None else str(port.core_port.value)
+                if widget.text() != text:
+                    widget.setText(text)
+                widget.setReadOnly(not (port.is_editable() and not port.has_connection()))
+
+        for port, (label_item, proxy) in self._output_widgets.items():
+            label_item.setText(port.name)
+            widget = proxy.widget()
+            if isinstance(widget, QLineEdit):
+                value = port.core_port.value
+                if value is None:
+                    text = ""
+                else:
+                    text = str(value)
+                if widget.text() != text:
+                    widget.setText(text)
+
+    def layout_ports(self):
+        rows = max(len(self.inputs) + len(self.outputs), 1)
+        label_width = self._compute_label_width()
+        field_width = self._compute_field_width()
+        content_width = (
+            self._content_margin
+            + label_width
+            + self._horizontal_gap
+            + field_width
+            + self._content_margin
+        )
+        title_width = self.label.boundingRect().width() + (self._content_margin * 2)
+        width = max(content_width, title_width)
+        height = self._title_height + (rows * self._row_height) + self._content_margin
+        self.setRect(0, 0, width, height)
+
+        self._layout_inputs(label_width, field_width)
+        self._layout_outputs(label_width, field_width)
+        self.sync_port_widgets()
+
+    def _layout_inputs(self, label_width: float, field_width: float) -> None:
+        for index, port in enumerate(self.inputs):
+            row_center_y = self._title_height + (index * self._row_height) + (self._row_height / 2)
+            port.setPos(0, row_center_y)
+
+            label_item, proxy = self._input_widgets[port]
+            label_item.setPos(self._content_margin, row_center_y - 10)
+
+            proxy.setPos(self._content_margin + label_width + self._horizontal_gap, row_center_y - 12)
+            widget = proxy.widget()
+            if isinstance(widget, QLineEdit):
+                widget.setFixedWidth(int(field_width))
+                widget.setFixedHeight(self._field_height)
+
             port.refresh_connections()
+
+    def _layout_outputs(self, label_width: float, field_width: float) -> None:
+        right_edge = self.rect().width()
+        label_x = self._content_margin
+        value_x = self._content_margin + label_width + self._horizontal_gap
+
+        for index, port in enumerate(self.outputs):
+            row_index = len(self.inputs) + index
+            row_center_y = self._title_height + (row_index * self._row_height) + (self._row_height / 2)
+            port.setPos(right_edge, row_center_y)
+
+            label_item, proxy = self._output_widgets[port]
+            label_item.setPos(label_x, row_center_y - 10)
+
+            proxy.setPos(value_x, row_center_y - 12)
+            widget = proxy.widget()
+            if isinstance(widget, QLineEdit):
+                widget.setFixedWidth(int(field_width))
+                widget.setFixedHeight(self._field_height)
+
+            port.refresh_connections()
+
+    def _compute_label_width(self) -> float:
+        labels = [self.label.boundingRect().width(), self._min_label_width]
+        for port, (label_item, _) in self._input_widgets.items():
+            labels.append(label_item.boundingRect().width())
+        for port, (label_item, _) in self._output_widgets.items():
+            labels.append(label_item.boundingRect().width())
+        return max(labels)
+
+    def _compute_field_width(self) -> float:
+        widths = [self._field_width]
+        for _, proxy in self._input_widgets.values():
+            widget = proxy.widget()
+            if isinstance(widget, QLineEdit):
+                widths.append(widget.sizeHint().width())
+        for _, proxy in self._output_widgets.values():
+            widget = proxy.widget()
+            if isinstance(widget, QLineEdit):
+                widths.append(widget.sizeHint().width())
+        return max(widths)
 
     def register_port(self, port: UIPort):
         port.clicked.connect(self.view.handle_port_click)
 
     def get_all_ports(self) -> list[UIPort]:
-        ports = [p for p in self.inputs] + [p for p in self.outputs]
-        return ports
+        return [*self.inputs, *self.outputs]
 
     def contextMenuEvent(self, event):
         self._last_context_pos = event.pos()
 
         menu = QMenu()
-        add_input_action = menu.addAction("Add input")
-        add_output_action = menu.addAction("Add output")
-        menu.addSeparator()
         delete_node = menu.addAction("Delete node")
 
         chosen = menu.exec(event.screenPos())
 
-        if chosen == add_input_action:
-            self.add_port("input")
-        elif chosen == add_output_action:
-            self.add_port("output")
-        elif chosen == delete_node:
-            # self.remove_requested.emit(self)
-            # TODO: Change Node to QGraphicsItem to support signals and change this to a signal emition
+        if chosen == delete_node:
             self.view.remove_node(self)
-            pass
 
         event.accept()
 

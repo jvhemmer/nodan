@@ -114,31 +114,23 @@ class UIPort(QGraphicsObject):
         if (not self.hovered and self._outside) or connection not in self.connections:
             return center
 
-        # If Port is being hovered:
-        if self.kind == "input":
-            sign = -1
-        else:
-            sign = 1
-
         ordered = sorted(
             self.connections,
-            key=lambda c: self.other_node_pos(c).x()
+            key=lambda c: self.other_node_pos(c).y()
         )
-        ordered = ordered[::-sign] # flip order if output
+        if self.kind == "output":
+            ordered = list(reversed(ordered))
         index = ordered.index(connection)
         count = len(ordered)
 
-        radius = 15 + ((count-1) * 1)
-
-        base_angle = sign * np.pi / 2 # up or down
+        radius = 18 + ((count - 1) * 1)
+        base_angle = 0 if self.kind == "output" else np.pi
 
         if count == 1:
             angle = base_angle
         else:
-            max_spread = np.radians(120)
-
-            used_spread: float = min(max_spread, np.radians(60 * (count - 1)))
-
+            max_spread = np.radians(100)
+            used_spread: float = min(max_spread, np.radians(35 * (count - 1)))
             start = base_angle - used_spread / 2
             step = used_spread / (count - 1)
             angle = start + index * step
