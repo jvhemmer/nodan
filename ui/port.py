@@ -49,25 +49,7 @@ class UIPort(QGraphicsObject):
         return QRectF(-r, -r, r * 2, r * 2)
 
     def draw_name(self, painter):
-        painter.setPen(QColor("#eceff4"))
-        painter.setFont(QFont("Segoe UI", 7))
-        if self.kind == "input":
-            text_pos = QPointF(7.5, -7.5)
-        else:
-            text_pos = QPointF(7.5, self.boundingRect().height() / 2 + 7.5)
-
-        value = self.core_port.value
-        if value is not None:
-            if isinstance(value, pd.DataFrame):
-                display_value = "<DataFrame>"
-            elif isinstance(value, pd.Series):
-                display_value = "<Series>"
-            else:
-                display_value = value
-            text = f"{self.name} = {display_value}"
-        else:
-            text = self.name
-        painter.drawText(text_pos, text)
+        return
 
     def paint(self, painter, option, widget=None):
         if self.kind == "input":
