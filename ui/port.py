@@ -93,15 +93,19 @@ class UIPort(QGraphicsObject):
         """Calculates where the connection should connect to."""
         center = self.scene_center()
 
-        if (not self.hovered and self._outside) or connection not in self.connections:
+        if connection not in self.connections:
+            return center
+
+        if not self.hovered and not self._tracking:
+            return center
+
+        if not self.hovered and self._outside:
             return center
 
         ordered = sorted(
             self.connections,
             key=lambda c: self.other_node_pos(c).y()
         )
-        if self.kind == "output":
-            ordered = list(reversed(ordered))
         index = ordered.index(connection)
         count = len(ordered)
 
@@ -182,12 +186,11 @@ class UIPort(QGraphicsObject):
             port_scene = self.mapToScene(QPointF(0, 0))
             distance = QLineF(cursor_scene, port_scene).length()
             dx = cursor_scene.x() - port_scene.x()
-            dy = cursor_scene.y() - port_scene.y()
 
             if self.kind == "input":
-                in_semicircle = dy <= 0
+                in_semicircle = dx <= 0
             else:
-                in_semicircle = dy >= 0
+                in_semicircle = dx >= 0
 
             is_outside = (distance > self.threshold) or (not in_semicircle)
             if is_outside and not self._outside:
