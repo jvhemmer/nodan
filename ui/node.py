@@ -37,15 +37,19 @@ class UINode(QGraphicsRectItem):
         self._min_label_width = 60
         self._field_width = 100
 
-        self._header_brush = QBrush(QColor("#2a2a2a"))
+        self._outline_color = QColor("#262626")
+        self._selected_outline_color = QColor("#5a5a5a")
+        self._header_color = QColor("#262626")
+        self._selected_header_color = QColor("#5a5a5a")
+        self._outline_pen = QPen(self._outline_color, 2)
         self._text_brush = QBrush(QColor("#eceff4"))
         self._fill_brush = QBrush(QColor("#1e1e1e"))
-        self._edge_pen = QPen(QColor("#262626"), 2)
+
 
         self.setPos(x, y)
 
         self.setBrush(self._fill_brush)
-        self.setPen(self._edge_pen)
+        self.setPen(self._outline_pen)
 
         self.setFlags(
             QGraphicsRectItem.GraphicsItemFlag.ItemIsMovable
@@ -58,11 +62,14 @@ class UINode(QGraphicsRectItem):
         self.change_label(name)
 
     def paint(self, painter, option, widget=None):
+        outline_color = self._selected_outline_color if self.isSelected() else self._outline_color
+        header_color = self._selected_header_color if self.isSelected() else self._header_color
+
         painter.setBrush(self.brush())
-        painter.setPen(self.pen())
+        painter.setPen(QPen(outline_color, self.pen().widthF()))
         painter.drawRoundedRect(self.rect(), self._corner_radius, self._corner_radius)
 
-        painter.setBrush(self._header_brush)
+        painter.setBrush(header_color)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(0, 0, self.rect().width(), self._title_height, self._corner_radius, self._corner_radius)
         painter.drawRect(0, self._title_height / 2, self.rect().width(), self._title_height / 2)
@@ -213,4 +220,6 @@ class UINode(QGraphicsRectItem):
             for port in self.get_all_ports():
                 for connection in port.connections:
                     connection.update_path()
+        elif change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
+            self.update()
         return super().itemChange(change, value)
