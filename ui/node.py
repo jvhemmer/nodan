@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pandas as pd
+from PySide6.QtCore import Qt
 
 from PySide6.QtGui import QBrush, QColor, QPen
 from PySide6.QtWidgets import (
@@ -35,17 +36,17 @@ class UINode(QGraphicsRectItem):
         self.name = name
 
         self._content_margin = 16
-        self._title_height = 28
-        self._row_height = 26
+        self._title_height = 32
+        self._row_height = 24
         self._horizontal_gap = 12
-        self._field_height = 24
+        self._field_height = 20
         self._min_label_width = 60
         self._field_width = 100
 
         self.setPos(x, y)
 
-        self.setBrush(QBrush(QColor("#3b4252")))
-        self.setPen(QPen(QColor("#88c0d0"), 2))
+        self.setBrush(QBrush(QColor("#1e1e1e")))
+        self.setPen(QPen(QColor("#262626"), 2))
 
         self.setFlags(
             QGraphicsRectItem.GraphicsItemFlag.ItemIsMovable
@@ -159,7 +160,7 @@ class UINode(QGraphicsRectItem):
         )
         title_width = self.label.boundingRect().width() + (self._content_margin * 2)
         width = max(content_width, title_width)
-        height = self._title_height + (rows * self._row_height) + self._content_margin
+        height = self._title_height + (rows * self._row_height) + self._content_margin /2
         self.setRect(0, 0, width, height)
 
         self._layout_inputs(label_width, field_width)
