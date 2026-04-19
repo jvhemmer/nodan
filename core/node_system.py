@@ -6,6 +6,7 @@ from typing import Any
 class PortSpec:
     name: str
     data_type: str
+    default: Any = None
     editable: bool = False
 
 @dataclass
@@ -20,6 +21,7 @@ class RepeatedInputSpec:
     data_type: str
     min_count: int = 2
     default_count: int = 2
+    editable: bool = False
 
 class Operation:
     registry: dict[str, type["Operation"]] = {}
@@ -47,13 +49,17 @@ class Operation:
         Operation.registry[cls.type_id] = cls
 
     def get_input_ports(self, instance) -> list[PortSpec]:
-        ports = list(self.inputs)
+        ports = list(self.input_spec)
 
         if self.repeated_inputs is not None:
             count = instance.state.get("input_count", self.repeated_inputs.default_count)
             for i in range(count):
                 ports.append(
-                    PortSpec(f"{self.repeated_inputs.base_name}{i + 1}", self.repeated_inputs.data_type)
+                    PortSpec(
+                        f"{self.repeated_inputs.base_name}{i + 1}",
+                        self.repeated_inputs.data_type,
+                        editable=self.repeated_inputs.editable,
+                    )
                 )
 
         return ports
@@ -63,13 +69,13 @@ class Operation:
 
     def validate_ports(self):
         seen_inputs = set()
-        for port in self.inputs:
+        for port in self.input_spec:
             if port.name in seen_inputs:
                 raise ValueError(f"Duplicate input port {port.name}")
             seen_inputs.add(port.name)
 
         seen_outputs = set()
-        for port in self.outputs:
+        for port in self.output_spec:
             if port.name in seen_outputs:
                 raise ValueError(f"Duplicate output port {port.name}")
             seen_outputs.add(port.name)
@@ -92,12 +98,12 @@ class CoreNode:
 
     def build_node_ports(self) -> tuple[list[CorePort], list[CorePort]]:
         inputs = [
-            CorePort(self.id, kind="input", spec=spec)
+            CorePort(self.id, kind="input", spec=spec, value=spec.default)
             for spec in self.definition.get_input_ports(self)
         ]
         outputs = [
-            CorePort(self.id, kind="output", spec=spec)
-            for spec in self.definition.outputs
+            CorePort(self.id, kind="output", spec=spec, value=spec.default)
+            for spec in self.definition.output_spec
         ]
         self.inputs = inputs
         self.outputs = outputs

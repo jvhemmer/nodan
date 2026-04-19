@@ -1,5 +1,9 @@
 from typing import Any
 
+import matplotlib.pyplot as plt
+import pandas as pd
+from PySide6.QtWidgets import QFileDialog
+
 from core.node_system import PortSpec, RepeatedInputSpec, ParamSpec, Operation
 
 class ConstantValue(Operation):
@@ -13,36 +17,186 @@ class ConstantValue(Operation):
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         return {"value": inputs["value"]}
 
-
 class DebugLog(Operation):
     type_id = "debug.log"
     title = "Debug Log"
     category = "Debug"
 
-    input_spec = (PortSpec("value", "any"))
+    input_spec = (PortSpec("value", "any"),)
     output_spec = ()
     params = []
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
-        value = inputs["value"]
-        print(value)
+        print(inputs)
 
 class MultiplyValue(Operation):
-    type_id = "multiply.value"
+    type_id = "value.multiply"
     title = "Multiply"
     category = "Basic operation"
 
     repeated_inputs = RepeatedInputSpec(
         base_name="value",
-        data_type="number",
+        data_type="numeric",
         min_count=2,
         default_count=2,
     )
 
-    output_spec = (PortSpec("result", "number"),)
+    output_spec = (PortSpec("result", "numeric"),)
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         result = 1
         for value in inputs.values():
             result *= float(value)
         return {"result": result}
+
+class ReadCSV(Operation):
+    type_id = "file.read_csv"
+    title = "Read CSV"
+    category = "Files"
+
+    input_spec = (
+        PortSpec("file_path", "string", editable=True),
+        PortSpec("separator", "string", default=",", editable=True),
+        PortSpec("comment", "string", default="%", editable=True),
+        PortSpec("header", "numeric", default=None, editable=True),
+    )
+    output_spec = (PortSpec("result", "array[numeric]"),)
+
+    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        file_path = inputs["file_path"]
+        separator = inputs["separator"]
+        comment = inputs["comment"]
+        header = int(inputs["header"]) if inputs["header"] is not None else None
+
+        if file_path is None:
+            file_path = QFileDialog.getOpenFileName()[0]
+            if not file_path:
+                raise ValueError("No file selected for opening.")
+
+
+        csv = pd.read_csv(file_path, sep=separator, comment=comment, header=header)
+
+        return {"result": csv}
+
+class FilterColumns(Operation):
+    type_id = "filter.dataframe"
+    title = "Filter columns"
+    category = "DataFrame"
+
+    input_spec = (
+        PortSpec("dataframe", "dataframe"),
+    )
+
+    repeated_inputs = RepeatedInputSpec(
+        base_name="column",
+        data_type="str | int",
+        min_count=1,
+        default_count=1,
+        editable=True
+    )
+
+    output_spec = (PortSpec("result", "series"),)
+
+    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        df = inputs["dataframe"]
+        columns = [
+            value
+            for name, value in inputs.items()
+            if name.startswith("column")
+        ]
+
+        print(df.columns.tolist())
+        print(columns)
+
+        if all(isinstance(col, int) for col in columns):
+            filtered = df.iloc[:, columns]
+        else:
+            filtered = df.loc[:, columns]
+
+        return {"result": filtered}
+
+class PlotXY(Operation):
+    type_id = "plot.xy"
+    title = "Plot XY"
+    category = "Plot"
+
+    input_spec = (
+        PortSpec("x", "numeric"),
+    )
+
+    repeated_inputs = RepeatedInputSpec(
+        base_name="y",
+        data_type="numeric",
+        min_count=1,
+        default_count=1,
+        editable=True
+    )
+
+    output_spec = ()
+
+    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        x = inputs["x"]
+        ys = [
+            value
+            for name, value in sorted(
+                ((name, value) for name, value in inputs.items() if name.startswith("y")),
+                key=lambda item: int(item[0].removeprefix("y")),
+            )
+            if value is not None
+        ]
+
+        if not ys:
+            raise ValueError("PlotXY requires at least one y input.")
+
+        x_values = self._to_plot_values(x)
+        fig, ax = plt.subplots()
+
+        overlay_count = 0
+        for y in ys:
+            for label, y_values in self._extract_series(y):
+                if len(x_values) != len(y_values):
+                    raise ValueError("x and y must have the same length.")
+
+                if label is None:
+                    label = f"y{overlay_count + 1}"
+                ax.plot(x_values, y_values, label=label)
+                overlay_count += 1
+
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_title("Plot XY")
+
+        if overlay_count > 1:
+            ax.legend()
+
+        fig.tight_layout()
+        plt.show()
+
+        return {}
+
+    def _to_plot_values(self, value: Any) -> list[Any]:
+        if isinstance(value, pd.DataFrame):
+            if value.shape[1] != 1:
+                raise ValueError("PlotXY x input must be a Series or single-column DataFrame.")
+            return value.iloc[:, 0].tolist()
+        if isinstance(value, pd.Series):
+            return value.tolist()
+        if hasattr(value, "tolist"):
+            converted = value.tolist()
+            if isinstance(converted, list):
+                return converted
+        if isinstance(value, (list, tuple)):
+            return list(value)
+        raise ValueError("PlotXY input must be array-like.")
+
+    def _extract_series(self, value: Any) -> list[tuple[str | None, list[Any]]]:
+        if isinstance(value, pd.DataFrame):
+            return [
+                (str(column), value[column].tolist())
+                for column in value.columns
+            ]
+        if isinstance(value, pd.Series):
+            label = str(value.name) if value.name is not None else None
+            return [(label, value.tolist())]
+        return [(None, self._to_plot_values(value))]
+

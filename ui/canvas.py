@@ -147,6 +147,7 @@ class Canvas(QGraphicsView):
                     w.show()
                     self.node_edit_windows.append(w)
                     w.evaluate_requested.connect(self.coordinator.evaluate_node)
+                    w.add_input_requested.connect(self.coordinator.add_repeated_input)
                     event.accept()
                 return
 

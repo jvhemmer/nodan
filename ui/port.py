@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+import pandas as pd
+
 if TYPE_CHECKING:
     from ui.node import UINode
     from ui.connection import UIConnection
@@ -54,8 +56,15 @@ class UIPort(QGraphicsObject):
         else:
             text_pos = QPointF(7.5, self.boundingRect().height() / 2 + 7.5)
 
-        if self.core_port.value:
-            text = f"{self.name} = {self.core_port.value}"
+        value = self.core_port.value
+        if value is not None:
+            if isinstance(value, pd.DataFrame):
+                display_value = "<DataFrame>"
+            elif isinstance(value, pd.Series):
+                display_value = "<Series>"
+            else:
+                display_value = value
+            text = f"{self.name} = {display_value}"
         else:
             text = self.name
         painter.drawText(text_pos, text)

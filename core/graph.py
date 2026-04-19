@@ -43,8 +43,7 @@ class Executor:
                 resolved_inputs[input_name] = value
                 continue
 
-            if input_port.value is not None:
-                resolved_inputs[input_name] = input_port.value
+            resolved_inputs[input_name] = input_port.value
 
         outputs = node.definition.evaluate(resolved_inputs, node.params)
 

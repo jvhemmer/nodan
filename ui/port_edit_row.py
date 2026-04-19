@@ -1,8 +1,10 @@
 from typing import Any
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QPushButton, QLabel
 from ui.port import UIPort
+
+ACTIONS_COLUMN_WIDTH = 90
 
 class PortEditRow(QWidget):
     remove_requested = Signal(object)
@@ -15,20 +17,27 @@ class PortEditRow(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # self.kind_label = QLabel(port.kind)
-        self.name_label = QLabel("Name")
         self.name_edit = QLineEdit(port.name)
-        self.value_label = QLabel("Value")
-        self.value_edit = QLineEdit(port.core_port.value)
+        self.type_value = QLabel(port.core_port.spec.data_type)
+        self.type_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        value_text = "" if port.core_port.value is None else str(port.core_port.value)
+        self.value_edit = QLineEdit(value_text)
         self.remove_button = QPushButton("Remove")
+        self.remove_button.setFixedWidth(ACTIONS_COLUMN_WIDTH)
 
-        # layout.addWidget(self.kind_label)
-        layout.addWidget(self.name_label, 1)
-        layout.addWidget(self.name_edit, 1)
-        layout.addWidget(self.value_label, 1)
-        layout.addWidget(self.value_edit, 1)
-        if port.ui_node.core_node.definition.repeated_inputs:
+        layout.addWidget(self.name_edit, 2)
+        layout.addWidget(self.type_value, 2)
+        layout.addWidget(self.value_edit, 2)
+        repeated = port.ui_node.core_node.definition.repeated_inputs
+        is_repeated_input = (
+            repeated is not None
+            and port.kind == "input"
+            and port.core_port.spec.name.startswith(repeated.base_name)
+        )
+        if is_repeated_input:
             layout.addWidget(self.remove_button)
+        else:
+            layout.addSpacing(ACTIONS_COLUMN_WIDTH)
 
         self.name_edit.editingFinished.connect(self.on_name_changed)
         self.value_edit.editingFinished.connect(self.on_value_changed)
@@ -39,6 +48,7 @@ class PortEditRow(QWidget):
 
     def on_value_changed(self):
         self.value_changed.emit(self.port, self.value_edit.text())
+        self.value_edit.clearFocus()
 
     def on_name_changed(self):
         self.port.name = self.name_edit.text()

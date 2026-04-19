@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from PySide6.QtCore import QPointF
 
-from core.node_system import CoreNode, CorePort
+from core.node_system import CoreNode, CorePort, PortSpec
 from core.operations import Operation, ConstantValue, DebugLog, MultiplyValue
 from ui.canvas import Canvas
 from core.graph import Graph, Executor
@@ -151,6 +151,67 @@ class Coordinator:
         self.executor.cache.clear()
         result = self.executor.evaluate_node(node.id) # TODO: Change evaluate_node to use CoreNode instead of ID
         return result
+
+    def add_repeated_input(self, node: CoreNode) -> None:
+        repeated = node.definition.repeated_inputs
+        if repeated is None:
+            return
+
+        current_count = node.state.get("input_count", repeated.default_count)
+        next_count = current_count + 1
+        node.state["input_count"] = next_count
+
+        core_port = CorePort(
+            node_id=node.id,
+            kind="input",
+            spec=PortSpec(
+                name=f"{repeated.base_name}{next_count}",
+                data_type=repeated.data_type,
+                editable=repeated.editable,
+            ),
+            value=None,
+        )
+        node.inputs.append(core_port)
+        self.executor.cache.clear()
+
+        binding = self.node_bindings.get(node.id)
+        if binding is None:
+            return
+
+        ui_port = binding.ui_node.add_port("input", core_port)
+        ui_port.name = core_port.spec.name
+
+    def remove_repeated_input(self, port: UIPort) -> None:
+        if port.kind != "input":
+            return
+
+        repeated = port.ui_node.core_node.definition.repeated_inputs
+        if repeated is None:
+            return
+
+        if port.has_connection():
+            return
+
+        node = port.ui_node.core_node
+        core_port = port.core_port
+        prefix = repeated.base_name
+
+        if not core_port.spec.name.startswith(prefix):
+            return
+
+        try:
+            index = int(core_port.spec.name.removeprefix(prefix))
+        except ValueError:
+            return
+
+        current_count = node.state.get("input_count", repeated.default_count)
+        if index != current_count or current_count <= repeated.min_count:
+            return
+
+        node.inputs.remove(core_port)
+        node.state["input_count"] = current_count - 1
+        self.executor.cache.clear()
+        port.ui_node.remove_port(port)
 
     def handle_port_clicked(self, port: UIPort) -> None:
         # optional: if you keep pending-drag state in Canvas, Canvas can call
