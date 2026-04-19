@@ -2,19 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pandas as pd
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QPen
+from PySide6.QtWidgets import QGraphicsItem, QGraphicsRectItem, QGraphicsSimpleTextItem, QMenu
 
-from PySide6.QtGui import QBrush, QColor, QPen, QFont
-from PySide6.QtWidgets import (
-    QGraphicsItem,
-    QGraphicsProxyWidget,
-    QGraphicsRectItem,
-    QGraphicsSimpleTextItem,
-    QLineEdit,
-    QMenu,
-)
-
+from ui.node_port_row import UINodePortRow
 from ui.port import UIPort
 
 if TYPE_CHECKING:
@@ -30,8 +22,8 @@ class UINode(QGraphicsRectItem):
 
         self.inputs: list[UIPort] = []
         self.outputs: list[UIPort] = []
-        self._input_widgets: dict[UIPort, tuple[QGraphicsSimpleTextItem, QGraphicsProxyWidget]] = {}
-        self._output_widgets: dict[UIPort, tuple[QGraphicsSimpleTextItem, QGraphicsProxyWidget]] = {}
+        self._input_rows: dict[UIPort, UINodePortRow] = {}
+        self._output_rows: dict[UIPort, UINodePortRow] = {}
         self._last_context_pos = None
         self.name = name
 
@@ -46,7 +38,6 @@ class UINode(QGraphicsRectItem):
         self._field_width = 100
 
         self._header_brush = QBrush(QColor("#2a2a2a"))
-        self._title_brush = QBrush(QColor("#eceff4"))
         self._text_brush = QBrush(QColor("#eceff4"))
         self._fill_brush = QBrush(QColor("#1e1e1e"))
         self._edge_pen = QPen(QColor("#262626"), 2)
@@ -62,8 +53,8 @@ class UINode(QGraphicsRectItem):
             | QGraphicsRectItem.GraphicsItemFlag.ItemSendsGeometryChanges
         )
 
-        self.label = QGraphicsSimpleTextItem(self)
-        self.label.setBrush(self._text_brush)
+        self.title = QGraphicsSimpleTextItem(self)
+        self.title.setBrush(self._text_brush)
         self.change_label(name)
 
     def paint(self, painter, option, widget=None):
@@ -78,11 +69,10 @@ class UINode(QGraphicsRectItem):
 
     def change_label(self, label: str):
         self.name = label
-        self.label.setText(label)
+        self.title.setText(label)
         font = QFont("Ubuntu", 10)
         font.setBold(True)
-        # font.setItalic(True)
-        self.label.setFont(font)
+        self.title.setFont(font)
         self._layout_title()
 
     def delete(self):
@@ -93,10 +83,10 @@ class UINode(QGraphicsRectItem):
         port = UIPort(self, kind, core_port, 0, 0, name=core_port.spec.name)
         if kind == "input":
             self.inputs.append(port)
-            self._input_widgets[port] = self._create_input_widgets(port)
+            self._input_rows[port] = UINodePortRow(self, port)
         else:
             self.outputs.append(port)
-            self._output_widgets[port] = self._create_output_widgets(port)
+            self._output_rows[port] = UINodePortRow(self, port)
         self.register_port(port)
         self.layout_ports()
         return port
@@ -111,70 +101,20 @@ class UINode(QGraphicsRectItem):
 
         ports.remove(port)
 
-        widgets = self._input_widgets if port.kind == "input" else self._output_widgets
-        label_item, proxy = widgets.pop(port)
+        rows = self._input_rows if port.kind == "input" else self._output_rows
+        row = rows.pop(port)
         scene = self.scene()
         if scene is not None:
-            scene.removeItem(label_item)
-            scene.removeItem(proxy)
+            row.delete()
             scene.removeItem(port)
 
         self.layout_ports()
 
-    def _create_input_widgets(self, port: UIPort) -> tuple[QGraphicsSimpleTextItem, QGraphicsProxyWidget]:
-        label_item = QGraphicsSimpleTextItem(port.name, self)
-        label_item.setBrush(self._text_brush)
-        font = label_item.font()
-        font.setFamily("Ubuntu Mono")
-        label_item.setFont(font)
-
-        line_edit = QLineEdit()
-        line_edit.setPlaceholderText("value")
-        line_edit.setFont(QFont("Ubuntu Mono", 9))
-        proxy = QGraphicsProxyWidget(self)
-        proxy.setWidget(line_edit)
-
-        line_edit.editingFinished.connect(lambda p=port, w=line_edit: self._on_input_edited(p, w))
-        return label_item, proxy
-
-    def _create_output_widgets(self, port: UIPort) -> tuple[QGraphicsSimpleTextItem, QGraphicsProxyWidget]:
-        label_item = QGraphicsSimpleTextItem(port.name, self)
-        label_item.setBrush(self._text_brush)
-        font = label_item.font()
-        font.setFamily("Ubuntu Mono")
-        label_item.setFont(font)
-
-        value_edit = QLineEdit()
-        value_edit.setReadOnly(True)
-        proxy = QGraphicsProxyWidget(self)
-        proxy.setWidget(value_edit)
-        return label_item, proxy
-
-    def _on_input_edited(self, port: UIPort, widget: QLineEdit) -> None:
-        if not port.is_editable() or port.has_connection():
-            self.sync_port_widgets()
-            return
-        self.view.coordinator.set_port_value(port, widget.text())
-        widget.clearFocus()
-        self.sync_port_widgets()
-
     def sync_port_widgets(self) -> None:
-        for port, (label_item, proxy) in self._input_widgets.items():
-            label_item.setText(port.name)
-            widget = proxy.widget()
-            if isinstance(widget, QLineEdit):
-                text = self._format_port_value(port.core_port.value)
-                if widget.text() != text:
-                    widget.setText(text)
-                widget.setReadOnly(not (port.is_editable() and not port.has_connection()))
-
-        for port, (label_item, proxy) in self._output_widgets.items():
-            label_item.setText(port.name)
-            widget = proxy.widget()
-            if isinstance(widget, QLineEdit):
-                text = self._format_port_value(port.core_port.value)
-                if widget.text() != text:
-                    widget.setText(text)
+        for row in self._input_rows.values():
+            row.sync()
+        for row in self._output_rows.values():
+            row.sync()
 
     def layout_ports(self):
         rows = max(len(self.inputs) + len(self.outputs), 1)
@@ -187,7 +127,7 @@ class UINode(QGraphicsRectItem):
             + field_width
             + self._content_margin
         )
-        title_width = self.label.boundingRect().width() + (self._content_margin * 2)
+        title_width = self.title.boundingRect().width() + (self._content_margin * 2)
         width = max(content_width, title_width)
         height = self._title_height + self._body_top_gap + (rows * self._row_height) + self._content_margin / 2
         self.setRect(0, 0, width, height)
@@ -201,17 +141,13 @@ class UINode(QGraphicsRectItem):
         for index, port in enumerate(self.inputs):
             row_center_y = self._title_height + self._body_top_gap + (index * self._row_height) + (self._row_height / 2)
             port.setPos(0, row_center_y)
-
-            label_item, proxy = self._input_widgets[port]
-            label_y = row_center_y - (label_item.boundingRect().height() / 2)
-            label_item.setPos(self._content_margin, label_y)
-
-            proxy.setPos(self._content_margin + label_width + self._horizontal_gap, row_center_y - 12)
-            widget = proxy.widget()
-            if isinstance(widget, QLineEdit):
-                widget.setFixedWidth(int(field_width))
-                widget.setFixedHeight(self._field_height)
-
+            self._input_rows[port].set_geometry(
+                self._content_margin,
+                row_center_y,
+                self._content_margin + label_width + self._horizontal_gap,
+                field_width,
+                self._field_height,
+            )
             port.refresh_connections()
 
     def _layout_outputs(self, label_width: float, field_width: float) -> None:
@@ -223,51 +159,35 @@ class UINode(QGraphicsRectItem):
             row_index = len(self.inputs) + index
             row_center_y = self._title_height + self._body_top_gap + (row_index * self._row_height) + (self._row_height / 2)
             port.setPos(right_edge, row_center_y)
-
-            label_item, proxy = self._output_widgets[port]
-            label_y = row_center_y - (label_item.boundingRect().height() / 2)
-            label_item.setPos(label_x, label_y)
-
-            proxy.setPos(value_x, row_center_y - 12)
-            widget = proxy.widget()
-            if isinstance(widget, QLineEdit):
-                widget.setFixedWidth(int(field_width))
-                widget.setFixedHeight(self._field_height)
-
+            self._output_rows[port].set_geometry(
+                label_x,
+                row_center_y,
+                value_x,
+                field_width,
+                self._field_height,
+            )
             port.refresh_connections()
 
     def _compute_label_width(self) -> float:
-        labels = [self.label.boundingRect().width(), self._min_label_width]
-        for port, (label_item, _) in self._input_widgets.items():
-            labels.append(label_item.boundingRect().width())
-        for port, (label_item, _) in self._output_widgets.items():
-            labels.append(label_item.boundingRect().width())
+        labels = [self._min_label_width]
+        for row in self._input_rows.values():
+            labels.append(row.label_width())
+        for row in self._output_rows.values():
+            labels.append(row.label_width())
         return max(labels)
 
     def _compute_field_width(self) -> float:
         widths = [self._field_width]
-        for _, proxy in self._input_widgets.values():
-            widget = proxy.widget()
-            if isinstance(widget, QLineEdit):
-                widths.append(widget.sizeHint().width())
-        for _, proxy in self._output_widgets.values():
-            widget = proxy.widget()
-            if isinstance(widget, QLineEdit):
-                widths.append(widget.sizeHint().width())
+        for row in self._input_rows.values():
+            widths.append(row.field_width_hint())
+        for row in self._output_rows.values():
+            widths.append(row.field_width_hint())
         return max(widths)
 
     def _layout_title(self) -> None:
-        title_rect = self.label.boundingRect()
+        title_rect = self.title.boundingRect()
         title_y = (self._title_height - title_rect.height()) / 2
-        self.label.setPos(self._content_margin, title_y)
-
-    def _format_port_value(self, value) -> str:
-        if value is None:
-            return ""
-        if isinstance(value, pd.DataFrame):
-            rows, cols = value.shape
-            return f"{rows}x{cols} DataFrame"
-        return str(value)
+        self.title.setPos(self._content_margin, title_y)
 
     def register_port(self, port: UIPort):
         port.clicked.connect(self.view.handle_port_click)
