@@ -99,7 +99,7 @@ class UIConnection(QGraphicsPathItem):
         else:
             end = start
 
-        offset = 80
+        offset = 40
 
         path = QPainterPath(start)
         path.cubicTo(
