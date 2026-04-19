@@ -44,9 +44,15 @@ class MultiplyValue(Operation):
     output_spec = (PortSpec("result", "scalar"),)
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
-        result = 1
-        for value in inputs.values():
-            result *= float(value)
+        values = [value for value in inputs.values() if value is not None]
+        if not values:
+            raise ValueError("Multiply requires at least one input value.")
+
+        result = values[0]
+        for value in values[1:]:
+            print(result)
+            print(type(value))
+            result = result * value
         return {"result": result}
 
 class ReadCSV(Operation):
@@ -199,4 +205,3 @@ class PlotXY(Operation):
             label = str(value.name) if value.name is not None else None
             return [(label, value.tolist())]
         return [(None, self._to_plot_values(value))]
-
