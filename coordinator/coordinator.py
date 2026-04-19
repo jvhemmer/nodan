@@ -234,7 +234,10 @@ class Coordinator:
             for port_name, value in input_values.items():
                 port = node.get_input_port(port_name)
                 if port is not None:
-                    port.value = value
+                    if isinstance(value, str):
+                        port.value = self._parse_value(port.spec.data_type, value)
+                    else:
+                        port.value = value
 
             binding = self.node_bindings[node.id]
             binding.ui_node.sync_port_widgets()
