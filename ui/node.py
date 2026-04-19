@@ -204,7 +204,7 @@ class UINode(QGraphicsRectItem):
         chosen = menu.exec(event.screenPos())
 
         if chosen == delete_node:
-            self.view.remove_node(self)
+            self.view.coordinator.remove_node(self.core_node.id)
 
         event.accept()
 
