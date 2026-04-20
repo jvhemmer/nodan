@@ -45,7 +45,7 @@ class UINodePortRow:
         self.label_item = QGraphicsSimpleTextItem(port.name, node)
         self.label_item.setBrush(node._text_brush)
         font = self.label_item.font()
-        font.setFamily("Space Mono")
+        font.setFamily("Consolas")
         font.setBold(True)
         font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
         font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
@@ -120,7 +120,7 @@ class UINodePortRow:
 
     def _build_line_edit(self) -> PortValueLineEdit:
         line_edit = PortValueLineEdit()
-        font = QFont("Space Mono", 9)
+        font = QFont("Consolas", 9)
         font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
         font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
         line_edit.setFont(font)
