@@ -41,6 +41,8 @@ class Canvas(QGraphicsView):
         self.setScene(self._scene)
 
         self.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        self.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
+        self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         self.setSceneRect(-2000, -2000, 4000, 4000)
 
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)

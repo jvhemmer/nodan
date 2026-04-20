@@ -77,8 +77,10 @@ class UINode(QGraphicsRectItem):
     def change_label(self, label: str):
         self.name = label
         self.title.setText(label)
-        font = QFont("Ubuntu", 10)
+        font = QFont("Jost", 10)
         font.setBold(True)
+        font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
+        font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
         self.title.setFont(font)
         self._layout_title()
 

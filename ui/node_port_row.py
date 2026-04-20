@@ -45,7 +45,10 @@ class UINodePortRow:
         self.label_item = QGraphicsSimpleTextItem(port.name, node)
         self.label_item.setBrush(node._text_brush)
         font = self.label_item.font()
-        font.setFamily("Ubuntu Mono")
+        font.setFamily("Space Mono")
+        font.setBold(True)
+        font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
+        font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
         self.label_item.setFont(font)
 
         self.proxy = QGraphicsProxyWidget(node)
@@ -117,7 +120,10 @@ class UINodePortRow:
 
     def _build_line_edit(self) -> PortValueLineEdit:
         line_edit = PortValueLineEdit()
-        line_edit.setFont(QFont("Ubuntu Mono", 9))
+        font = QFont("Space Mono", 9)
+        font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
+        font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+        line_edit.setFont(font)
         line_edit.hover_entered.connect(self._expand_if_needed)
         line_edit.hover_left.connect(self._restore_width)
 
