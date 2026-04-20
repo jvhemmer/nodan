@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication
 
-from ui.main_window import MainWindow
+from nodan.ui.main_window import MainWindow
 
 
 def main() -> int:
