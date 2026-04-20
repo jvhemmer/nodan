@@ -201,3 +201,18 @@ class PlotXY(Operation):
             label = str(value.name) if value.name is not None else None
             return [(label, value.tolist())]
         return [(None, self._to_plot_values(value))]
+
+class RawCode(Operation):
+    type_id = "code.execute"
+    title = "Execute code"
+    category = "Code"
+
+    input_spec = (
+        PortSpec("code", "text", editable=True),
+    )
+
+    output_spec = ()
+
+    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        text = inputs["code"]
+        eval(text)
