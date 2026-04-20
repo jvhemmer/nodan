@@ -5,13 +5,13 @@ from uuid import uuid4
 
 from PySide6.QtCore import QPointF
 
-from core.node_system import CoreNode, CorePort, PortSpec
-from core.operations import Operation, ConstantValue, DebugLog, MultiplyValue
-from ui.canvas import Canvas
-from core.graph import Graph, Executor
-from ui.connection import UIConnection
-from ui.node import UINode
-from ui.port import UIPort
+from nodan.core.node_system import CoreNode, CorePort, PortSpec
+from nodan.core.operations import Operation
+from nodan.ui.canvas import Canvas
+from nodan.core.graph import Graph, Executor
+from nodan.ui.connection import UIConnection
+from nodan.ui.node import UINode
+from nodan.ui.port import UIPort
 
 
 @dataclass

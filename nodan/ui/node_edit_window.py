@@ -1,19 +1,19 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from ui.port import UIPort
+from nodan.ui.port import UIPort
 
 if TYPE_CHECKING:
-    from ui.canvas import Canvas
+    from nodan.ui.canvas import Canvas
 
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QPushButton, QSizePolicy, QLayout, QBoxLayout, QLineEdit, \
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QPushButton, QLineEdit, \
     QLabel, QGridLayout
 
-from ui.node import UINode
-from ui.port_edit_row import PortEditRow, ACTIONS_COLUMN_WIDTH
-from core.node_system import CoreNode
+from nodan.ui.node import UINode
+from nodan.ui.port_edit_row import PortEditRow, ACTIONS_COLUMN_WIDTH
+from nodan.core.node_system import CoreNode
 
 
 class NodeEditWindow(QWidget):

@@ -1,13 +1,15 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
+import numpy as np
+
 if TYPE_CHECKING:
-    from ui.port import UIPort
+    from nodan.ui.port import UIPort
 
 from PySide6.QtCore import QPointF, QPoint, Qt, QRectF, Signal
 from PySide6.QtGui import QColor, QPen, QPainterPath
 from PySide6.QtWidgets import QGraphicsPathItem, QGraphicsObject
 
-import math
 
 class UIConnectionTip(QGraphicsObject):
     clicked = Signal(object)
@@ -89,6 +91,23 @@ class UIConnection(QGraphicsPathItem):
         self.target = None
         self.drag_pos = None
 
+    def calculate_offset(self) -> tuple[float, float]:
+        source = self.source
+        target = self.target
+
+        if not target:
+            return 40, 0
+
+        source_pos = source.scenePos()
+        target_pos = target.scenePos()
+
+        dx = target_pos.x() - source_pos.x()
+        dy = target_pos.y() - source_pos.y()
+        if dx < 0:
+            return 40 + 10*np.sqrt(abs(dx)), 10*np.sqrt(abs(dy))
+        else:
+            return 40, 0
+
     def update_path(self):
         start = self.source.connection_anchor(self)
 
@@ -99,12 +118,14 @@ class UIConnection(QGraphicsPathItem):
         else:
             end = start
 
-        offset = 40
+        offset_x, offset_y = self.calculate_offset()
+
+        print(offset_y)
 
         path = QPainterPath(start)
         path.cubicTo(
-            QPointF(start.x() + offset, start.y()),
-            QPointF(end.x() - offset, end.y()),
+            QPointF(start.x() + offset_x, start.y() + offset_y),
+            QPointF(end.x() - offset_x, end.y() - offset_y),
             end,
         )
         self.setPath(path)

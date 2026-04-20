@@ -1,17 +1,15 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-import pandas as pd
-
 if TYPE_CHECKING:
-    from ui.node import UINode
-    from ui.connection import UIConnection
+    from nodan.ui.node import UINode
+    from nodan.ui.connection import UIConnection
 
-from PySide6.QtCore import QPointF, Signal, QRectF, QLineF, QEvent, QPoint
-from PySide6.QtGui import QBrush, QColor, QPen, QCursor, QMouseEvent, QPainter, QFont
+from PySide6.QtCore import QPointF, Signal, QRectF, QLineF, QEvent
+from PySide6.QtGui import QBrush, QColor, QCursor, QMouseEvent, QPainter
 from PySide6.QtWidgets import QGraphicsObject
 
-from core.node_system import PortSpec, CorePort
+from nodan.core.node_system import CorePort
 
 import numpy as np
 

@@ -1,19 +1,19 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from core.node_system import Operation
+from nodan.core.node_system import Operation
 
 if TYPE_CHECKING:
-    from coordinator.coordinator import Coordinator
+    from nodan.coordinator.coordinator import Coordinator
 
 from PySide6.QtCore import QPoint, Qt, QPointF, Signal
 from PySide6.QtGui import QCursor, QPainter
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QMenu
 
-from ui.node import UINode
-from ui.port import UIPort
-from ui.connection import UIConnection, UIConnectionTip
-from ui.node_edit_window import NodeEditWindow
+from nodan.ui.node import UINode
+from nodan.ui.port import UIPort
+from nodan.ui.connection import UIConnection, UIConnectionTip
+from nodan.ui.node_edit_window import NodeEditWindow
 
 
 class Canvas(QGraphicsView):

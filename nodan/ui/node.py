@@ -6,12 +6,12 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPen
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsRectItem, QGraphicsSimpleTextItem, QMenu
 
-from ui.node_port_row import UINodePortRow
-from ui.port import UIPort
+from nodan.ui.node_port_row import UINodePortRow
+from nodan.ui.port import UIPort
 
 if TYPE_CHECKING:
-    from core.node_system import CoreNode, CorePort
-    from ui.canvas import Canvas
+    from nodan.core.node_system import CoreNode, CorePort
+    from nodan.ui.canvas import Canvas
 
 
 class UINode(QGraphicsRectItem):

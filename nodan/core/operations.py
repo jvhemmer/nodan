@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from PySide6.QtWidgets import QFileDialog
 
-from core.node_system import PortSpec, RepeatedInputSpec, ParamSpec, Operation
+from nodan.core.node_system import PortSpec, RepeatedInputSpec, Operation
 
 class ConstantValue(Operation):
     type_id = "value.constant"

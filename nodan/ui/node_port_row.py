@@ -8,8 +8,8 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QGraphicsProxyWidget, QGraphicsSimpleTextItem, QLineEdit
 
 if TYPE_CHECKING:
-    from ui.node import UINode
-    from ui.port import UIPort
+    from nodan.ui.node import UINode
+    from nodan.ui.port import UIPort
 
 
 class PortValueLineEdit(QLineEdit):

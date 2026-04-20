@@ -1,5 +1,5 @@
-from core.graph import Graph, Executor
-from core.node_system import CoreNode, DebugLog, ConstantValue, MultiplyValue
+from nodan.core.graph import Graph, Executor
+from nodan.core.node_system import CoreNode, DebugLog, ConstantValue, MultiplyValue
 
 graph = Graph()
 

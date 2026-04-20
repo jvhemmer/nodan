@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QFileDialog, QMainWindow
 
-from coordinator.coordinator import Coordinator
-from ui.canvas import Canvas
+from nodan.coordinator.coordinator import Coordinator
+from nodan.ui.canvas import Canvas
 
 
 class MainWindow(QMainWindow):

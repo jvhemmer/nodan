@@ -1,8 +1,6 @@
-from typing import Any
-
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QPushButton, QLabel
-from ui.port import UIPort
+from nodan.ui.port import UIPort
 
 ACTIONS_COLUMN_WIDTH = 90
 
