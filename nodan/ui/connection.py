@@ -104,6 +104,7 @@ class UIConnection(QGraphicsPathItem):
         dx = target_pos.x() - source_pos.x()
         dy = target_pos.y() - source_pos.y()
         if dx < 0:
+            # TODO: Improve offset calculation
             return 40 + 10*np.sqrt(abs(dx)), 10*np.sqrt(abs(dy))
         else:
             return 40, 0
@@ -119,8 +120,6 @@ class UIConnection(QGraphicsPathItem):
             end = start
 
         offset_x, offset_y = self.calculate_offset()
-
-        print(offset_y)
 
         path = QPainterPath(start)
         path.cubicTo(
