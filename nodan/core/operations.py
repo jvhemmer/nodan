@@ -50,7 +50,8 @@ class MultiplyValue(Operation):
 
         result = values[0]
         for value in values[1:]:
-            result = result * value
+            # TODO: Check type correctly rather then convert
+            result = result * float(value)
         return {"result": result}
 
 class ReadCSV(Operation):
