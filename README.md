@@ -12,7 +12,7 @@ NoDAn is a desktop application for building data analysis workflows as node diag
 ## Installation
 This project uses `uv` for dependency management. To install `uv`, see [here](https://docs.astral.sh/uv/getting-started/installation/).
 
-If using Git, clone this repo, install dependencies, and launch `main.py`:
+If using Git, clone this repo, install dependencies, and run `nodan`:
 ```text
 git clone https://github.com/jvhemmer/nodan NoDAn
 cd NoDAn
