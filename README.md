@@ -14,8 +14,8 @@ This project uses `uv` for dependency management. To install `uv`, see [here](ht
 
 If using Git, clone this repo, install dependencies, and run `nodan`:
 ```text
-git clone https://github.com/jvhemmer/nodan NoDAn
-cd NoDAn
+git clone https://github.com/jvhemmer/nodan
+cd nodan
 uv sync
 uv run nodan
 ```
