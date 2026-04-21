@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 from PySide6.QtCore import QPointF, Signal, QRectF, QLineF, QEvent
 from PySide6.QtGui import QBrush, QColor, QCursor, QMouseEvent, QPainter
-from PySide6.QtWidgets import QGraphicsObject
+from PySide6.QtWidgets import QGraphicsObject, QGraphicsItem
 
 from nodan.core.node_system import CorePort
 
