@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from PySide6.QtWidgets import QFileDialog
 
+import operator
+
 from nodan.core.node_system import PortSpec, RepeatedInputSpec, Operation
 
 class ConstantValue(Operation):
@@ -28,6 +30,33 @@ class DebugLog(Operation):
 
     def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         print(inputs)
+
+class ElementWiseOperation(Operation):
+    operation = staticmethod(operator.add)
+
+    input_spec = ()
+
+    repeated_inputs = RepeatedInputSpec(
+        base_name="dataframe",
+        data_type="dataframe",
+        min_count=2,
+        default_count=2,
+    )
+
+    output_spec = (PortSpec("result", "dataframe"),)
+
+    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        dfs = [df for df in inputs.values() if df is not None]
+        if not dfs:
+            raise ValueError(f"{self.title} requires at least one dataframe.")
+
+        result = dfs[0]
+        for df in dfs[1:]:
+            result = self.operation(result, df)
+        return {"result": result}
+
+class ElementWiseSum(Operation):
+    pass
 
 class MultiplyValue(Operation):
     type_id = "value.multiply"
