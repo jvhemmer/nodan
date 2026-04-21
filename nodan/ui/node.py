@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class UINode(QGraphicsRectItem):
     def __init__(self, parent: Canvas, core_node: CoreNode, x=0, y=0, width=380, height=140, name="Node"):
         super().__init__(0, 0, width, height)
-        self.view = parent
+        self.canvas = parent
         self.core_node = core_node
 
         self.inputs: list[UIPort] = []
@@ -47,11 +47,12 @@ class UINode(QGraphicsRectItem):
         self._text_brush = QBrush(QColor("#eceff4"))
         self._fill_brush = QBrush(QColor("#1e1e1e"))
 
-        self.delete_button = UINodeButton(self, "/x_outline.svg", "/x_filled.svg")
-        self.eval_button = UINodeButton(self, "/play_outline.svg", "/play_filled.svg")
-        self.delete_button.clicked.connect(lambda: self.view.coordinator.remove_node(self.core_node.id))
-        self.eval_button.clicked.connect(lambda: self.view.coordinator.evaluate_node(self.core_node))
+        self.delete_button = UINodeButton(self,  "/x_filled.svg", "/x_outline.svg")
+        self.delete_button.clicked.connect(lambda: self.canvas.coordinator.remove_node(self.core_node.id))
         self.delete_button.setVisible(False)
+
+        self.eval_button = UINodeButton(self, "/play_filled.svg", "/play_outline.svg")
+        self.eval_button.clicked.connect(lambda: self.canvas.coordinator.evaluate_node(self.core_node))
         self.eval_button.setVisible(False)
 
         self.setPos(x, y)
@@ -202,7 +203,7 @@ class UINode(QGraphicsRectItem):
         self.layout_ports()
 
     def register_port(self, port: UIPort):
-        port.clicked.connect(self.view.handle_port_click)
+        port.clicked.connect(self.canvas.handle_port_click)
 
     def get_all_ports(self) -> list[UIPort]:
         return [*self.inputs, *self.outputs]
@@ -231,7 +232,7 @@ class UINode(QGraphicsRectItem):
         chosen = menu.exec(event.screenPos())
 
         if chosen == delete_node:
-            self.view.coordinator.remove_node(self.core_node.id)
+            self.canvas.coordinator.remove_node(self.core_node.id)
 
         event.accept()
 

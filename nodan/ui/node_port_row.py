@@ -94,7 +94,7 @@ class UINodePortRow:
             self.sync()
             return
 
-        self.node.view.coordinator.set_port_value(self.port, self.line_edit.text())
+        self.node.canvas.coordinator.set_port_value(self.port, self.line_edit.text())
         self.line_edit.clearFocus()
         self.sync()
 
@@ -111,12 +111,12 @@ class UINodePortRow:
         if not self.port.is_editable() or self.port.has_connection():
             self.sync()
         else:
-            self.node.view.coordinator.set_port_value(self.port, self.line_edit.text())
+            self.node.canvas.coordinator.set_port_value(self.port, self.line_edit.text())
             self.sync()
 
         self.line_edit.clearFocus()
         self._rebuild_editor()
-        QTimer.singleShot(0, self.node.view.viewport().setFocus)
+        QTimer.singleShot(0, self.node.canvas.viewport().setFocus)
 
     def _build_line_edit(self) -> PortValueLineEdit:
         line_edit = PortValueLineEdit()
