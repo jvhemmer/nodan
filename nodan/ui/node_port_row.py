@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pandas as pd
-from PySide6.QtCore import QTimer, Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QTimer, Qt, Signal, QPointF, QRectF
+from PySide6.QtGui import QFont, QPainter, QColor, QFontMetrics
 from PySide6.QtWidgets import QGraphicsProxyWidget, QGraphicsSimpleTextItem, QLineEdit
 
 if TYPE_CHECKING:
@@ -17,6 +17,89 @@ class PortValueLineEdit(QLineEdit):
     hover_entered = Signal()
     hover_left = Signal()
 
+    def __init__(self, parent: UINodePortRow):
+        super().__init__()
+        self.parent = parent
+
+        self.hovered = False
+        self.normal_min_width = self.width()
+
+        self.setFrame(False)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet("""
+        QLineEdit {
+            background: transparent;
+            padding: 0px 2px
+        }
+        """)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        painter.setBrush(QColor("#1c1c1c"))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRoundedRect(self.rect(), 4, 4)
+        painter.end()
+
+        super().paintEvent(event)
+
+        if self.hovered:
+            padding = 4
+
+            # TODO: Editable area must take into account the type badge width
+            metrics = QFontMetrics(self.font())
+            text = self.parent.port.core_port.spec.data_type
+            text_width = metrics.horizontalAdvance(text)
+
+            text_start = self.width() - text_width - padding
+            height = 14
+
+            # Draw the background rectangle
+            painter = QPainter(self)
+            painter.setBrush(QColor("#262626"))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(QRectF(text_start - padding, 0, text_width + 2*padding, self.height()), 4, 4)
+
+            # Draw the text representing the port type
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(QColor("#4d4d4d"))
+            type_font = QFont("Consolas")
+            type_font.setBold(True)
+            type_font.setItalic(True)
+            painter.setFont(type_font)
+            painter.drawText(text_start, height, text)
+
+            painter.end()
+
+    def type_badge_width(self, text: str = "text") -> float:
+        padding = 4
+
+        type_font = QFont("Consolas")
+        type_font.setBold(True)
+        type_font.setItalic(True)
+
+        type_width = QFontMetrics(type_font).horizontalAdvance(text)
+
+        total_width = type_width + padding * 2
+        return total_width
+
+
+    # def update_badge_margin(self, text: str = "text"):
+    #     padding = 4
+    #
+    #     value_width = QFontMetrics(self.font()).horizontalAdvance(self.text())
+    #
+    #     type_font = QFont("Consolas")
+    #     type_font.setBold(True)
+    #     type_font.setItalic(True)
+    #
+    #     type_width = QFontMetrics(type_font).horizontalAdvance(text)
+    #
+    #     total_width = value_width + type_width + padding * 4
+    #     self.setMinimumWidth(total_width)
+
+    # === Key/Mouse events ===
     def keyPressEvent(self, event) -> None:
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self.submitted.emit()
@@ -25,10 +108,18 @@ class PortValueLineEdit(QLineEdit):
         super().keyPressEvent(event)
 
     def enterEvent(self, event) -> None:
+        self.hovered = True
+        # self.setMinimumWidth(self.normal_min_width + self.type_badge_width())
+        # self.updateGeometry()
+        # self.update()
         self.hover_entered.emit()
         super().enterEvent(event)
 
     def leaveEvent(self, event) -> None:
+        self.hovered = False
+        # self.setMinimumWidth(self.normal_min_width)
+        # self.updateGeometry()
+        # self.update()
         self.hover_left.emit()
         super().leaveEvent(event)
 
@@ -119,7 +210,7 @@ class UINodePortRow:
         QTimer.singleShot(0, self.node.canvas.viewport().setFocus)
 
     def _build_line_edit(self) -> PortValueLineEdit:
-        line_edit = PortValueLineEdit()
+        line_edit = PortValueLineEdit(self)
         font = QFont("Consolas", 9)
         font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
         font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
@@ -158,7 +249,7 @@ class UINodePortRow:
         text_width = self.line_edit.fontMetrics().horizontalAdvance(text)
         target_width = text_width + 18
         if target_width > self._base_field_width:
-            self.line_edit.setFixedWidth(target_width)
+            self.line_edit.setFixedWidth(target_width + self.line_edit.type_badge_width())
         self.node.setZValue(1000)
 
     def _restore_width(self) -> None:
