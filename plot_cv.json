@@ -86,18 +86,6 @@
       "target_port": "dataframe"
     },
     {
-      "source_node_id": "b8ebd910-8b3b-42ff-b59a-37f1c8116baa",
-      "source_port": "result",
-      "target_node_id": "1fe3bb85-799e-4b87-93ff-3e73c8f6d174",
-      "target_port": "value1"
-    },
-    {
-      "source_node_id": "bf7c1dc6-15f3-4d7e-ac53-3557318e112f",
-      "source_port": "value",
-      "target_node_id": "1fe3bb85-799e-4b87-93ff-3e73c8f6d174",
-      "target_port": "value2"
-    },
-    {
       "source_node_id": "1fe3bb85-799e-4b87-93ff-3e73c8f6d174",
       "source_port": "result",
       "target_node_id": "1c13048f-d7ca-4907-a0d4-c90caf58b6e2",
@@ -108,6 +96,18 @@
       "source_port": "result",
       "target_node_id": "1c13048f-d7ca-4907-a0d4-c90caf58b6e2",
       "target_port": "x"
+    },
+    {
+      "source_node_id": "b8ebd910-8b3b-42ff-b59a-37f1c8116baa",
+      "source_port": "result",
+      "target_node_id": "1fe3bb85-799e-4b87-93ff-3e73c8f6d174",
+      "target_port": "value"
+    },
+    {
+      "source_node_id": "bf7c1dc6-15f3-4d7e-ac53-3557318e112f",
+      "source_port": "value",
+      "target_node_id": "1fe3bb85-799e-4b87-93ff-3e73c8f6d174",
+      "target_port": "value1"
     }
   ]
 }

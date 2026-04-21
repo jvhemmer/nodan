@@ -34,11 +34,13 @@ class MultiplyValue(Operation):
     title = "Multiply"
     category = "Basic operation"
 
+    input_spec = (PortSpec("value", "object"),)
+
     repeated_inputs = RepeatedInputSpec(
         base_name="value",
         data_type="scalar",
-        min_count=2,
-        default_count=2,
+        min_count=1,
+        default_count=1,
     )
 
     output_spec = (PortSpec("result", "scalar"),)
