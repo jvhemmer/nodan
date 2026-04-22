@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, ClassVar
 
 
 @dataclass
@@ -21,15 +21,15 @@ class RepeatedInputSpec:
 
 @dataclass(frozen=True)
 class Operation:
-    registry: dict[str, type["Operation"]] = {}
+    registry: ClassVar[dict[str, type["Operation"]]] = {}
 
-    type_id = ""
-    title = ""
-    category = "General"
+    type_id: ClassVar[str] = ""
+    title: ClassVar[str] = ""
+    category: ClassVar[str] = "General"
 
-    input_spec: list[PortSpec] = []
-    output_spec: list[PortSpec] = []
-    repeated_inputs: RepeatedInputSpec | None = None
+    input_spec: ClassVar[list[PortSpec]] = []
+    output_spec: ClassVar[list[PortSpec]] = []
+    repeated_inputs: ClassVar[RepeatedInputSpec | None] = None
 
     def __init__(self):
         self.validate_ports()
