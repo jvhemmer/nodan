@@ -7,6 +7,7 @@ from PySide6.QtCore import QPointF
 
 from nodan.core.node_system import CoreNode, CorePort, PortSpec
 from nodan.core.operations import Operation
+from nodan.core.type_parser import PortValueParser
 from nodan.ui.canvas import Canvas
 from nodan.core.graph import Graph, Executor
 from nodan.ui.connection import UIConnection
@@ -25,6 +26,7 @@ class Coordinator:
         self.canvas = canvas
 
         self.executor = Executor(self.graph)
+        self.value_parser = PortValueParser()
 
         self.node_bindings: dict[str, UINodeBinding] = {}
         self.port_index: dict[UIPort, tuple[str, str, str]] = {}
@@ -235,7 +237,7 @@ class Coordinator:
                 port = node.get_input_port(port_name)
                 if port is not None:
                     if isinstance(value, str):
-                        port.value = self._parse_value(port.spec.data_type, value)
+                        port.value = self.value_parser.parse(port.spec.data_type, value)
                     else:
                         port.value = value
 
@@ -370,32 +372,13 @@ class Coordinator:
         if port.connections:
             raise ValueError(f"Port '{core_port.spec.name}' is connected and cannot be edited")
 
-        core_port.value = self._parse_value(core_port.spec.data_type, raw_value)
+        core_port.value = self.value_parser.parse(core_port.spec.data_type, raw_value)
         self.executor.cache.clear()
         port.ui_node.sync_port_widgets()
 
     def _refresh_all_nodes(self) -> None:
         for binding in self.node_bindings.values():
             binding.ui_node.sync_port_widgets()
-
-    def _parse_value(self, data_type: str, raw_value: str) -> Any:
-        value = raw_value.strip()
-
-        if data_type == "scalar":
-            if value == "":
-                return None
-            try:
-                return float(value) if "." in value else int(value)
-            except ValueError:
-                return value
-
-        if data_type == "bool":
-            return value.lower() in {"1", "true", "yes", "on"}
-
-        if data_type in {"text", "string", "object", "any"}:
-            return raw_value
-
-        return raw_value
 
     def _find_ui_port(self, ports: list[UIPort], port_name: str) -> UIPort | None:
         for port in ports:
@@ -411,3 +394,5 @@ class Coordinator:
         if isinstance(value, dict):
             return {key: self._serialize_value(item) for key, item in value.items()}
         raise TypeError(f"Cannot serialize value of type {type(value).__name__}")
+
+
