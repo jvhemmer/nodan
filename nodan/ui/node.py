@@ -1,12 +1,18 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, QRectF, Signal
+from PySide6.QtCore import QRectF, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QPen
 from PySide6.QtSvg import QSvgRenderer
-from PySide6.QtWidgets import QGraphicsItem, QGraphicsRectItem, QGraphicsSimpleTextItem, QMenu, QGraphicsObject
+from PySide6.QtWidgets import (
+    QGraphicsItem,
+    QGraphicsObject,
+    QGraphicsRectItem,
+    QGraphicsSimpleTextItem,
+    QMenu,
+)
 
 from nodan.ui.node_port_row import UINodePortRow
 from nodan.ui.port import UIPort
@@ -17,7 +23,16 @@ if TYPE_CHECKING:
 
 
 class UINode(QGraphicsRectItem):
-    def __init__(self, parent: Canvas, core_node: CoreNode, x=0, y=0, width=380, height=140, name="Node"):
+    def __init__(
+        self,
+        parent: Canvas,
+        core_node: CoreNode,
+        x=0.0,
+        y=0.0,
+        width=380,
+        height=140,
+        name="Node",
+    ):
         super().__init__(0, 0, width, height)
         self.canvas = parent
         self.core_node = core_node
@@ -47,12 +62,17 @@ class UINode(QGraphicsRectItem):
         self._text_brush = QBrush(QColor("#eceff4"))
         self._fill_brush = QBrush(QColor("#1e1e1e"))
 
-        self.delete_button = UINodeButton(self,  "/x_filled.svg", "/x_outline.svg")
-        self.delete_button.clicked.connect(lambda: self.canvas.coordinator.remove_node(self.core_node.id))
+        # TODO: Find a way for the coordinator to never be None
+        self.delete_button = UINodeButton(self, "/x_filled.svg", "/x_outline.svg")
+        self.delete_button.clicked.connect(
+            lambda: self.canvas.coordinator.remove_node(self.core_node.id)
+        )
         self.delete_button.setVisible(False)
 
         self.eval_button = UINodeButton(self, "/play_filled.svg", "/play_outline.svg")
-        self.eval_button.clicked.connect(lambda: self.canvas.coordinator.evaluate_node(self.core_node))
+        self.eval_button.clicked.connect(
+            lambda: self.canvas.coordinator.evaluate_node(self.core_node)
+        )
         self.eval_button.setVisible(False)
 
         self.setPos(x, y)
@@ -73,8 +93,12 @@ class UINode(QGraphicsRectItem):
 
     # === Paint ===
     def paint(self, painter, option, widget=None):
-        outline_color = self._selected_outline_color if self.isSelected() else self._outline_color
-        header_color = self._selected_header_color if self.isSelected() else self._header_color
+        outline_color = (
+            self._selected_outline_color if self.isSelected() else self._outline_color
+        )
+        header_color = (
+            self._selected_header_color if self.isSelected() else self._header_color
+        )
 
         painter.setBrush(self.brush())
         painter.setPen(QPen(outline_color, self.pen().widthF()))
@@ -82,8 +106,17 @@ class UINode(QGraphicsRectItem):
 
         painter.setBrush(header_color)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRoundedRect(0, 0, self.rect().width(), self._title_height, self._corner_radius, self._corner_radius)
-        painter.drawRect(0, self._title_height / 2, self.rect().width(), self._title_height / 2)
+        painter.drawRoundedRect(
+            0,
+            0,
+            self.rect().width(),
+            self._title_height,
+            self._corner_radius,
+            self._corner_radius,
+        )
+        painter.drawRect(
+            0, self._title_height / 2, self.rect().width(), self._title_height / 2
+        )
 
     # === Geometry ===
     def _compute_label_width(self) -> float:
@@ -115,11 +148,14 @@ class UINode(QGraphicsRectItem):
             + self._content_margin
         )
         title_width = self.title.boundingRect().width() + (self._content_margin * 2)
-        buttons_width = sum(
-            b.boundingRect().width() for b in self.get_all_buttons()
-        )
+        buttons_width = sum(b.boundingRect().width() for b in self.get_all_buttons())
         width = max(content_width, title_width + buttons_width)
-        height = self._title_height + self._body_top_gap + (rows * self._row_height) + self._content_margin / 2
+        height = (
+            self._title_height
+            + self._body_top_gap
+            + (rows * self._row_height)
+            + self._content_margin / 2
+        )
         self.setRect(0, 0, width, height)
 
         self._layout_title()
@@ -130,7 +166,12 @@ class UINode(QGraphicsRectItem):
 
     def _layout_inputs(self, label_width: float, field_width: float) -> None:
         for index, port in enumerate(self.inputs):
-            row_center_y = self._title_height + self._body_top_gap + (index * self._row_height) + (self._row_height / 2)
+            row_center_y = (
+                self._title_height
+                + self._body_top_gap
+                + (index * self._row_height)
+                + (self._row_height / 2)
+            )
             port.setPos(0, row_center_y)
             self._input_rows[port].set_geometry(
                 self._content_margin,
@@ -148,7 +189,12 @@ class UINode(QGraphicsRectItem):
 
         for index, port in enumerate(self.outputs):
             row_index = len(self.inputs) + index
-            row_center_y = self._title_height + self._body_top_gap + (row_index * self._row_height) + (self._row_height / 2)
+            row_center_y = (
+                self._title_height
+                + self._body_top_gap
+                + (row_index * self._row_height)
+                + (self._row_height / 2)
+            )
             port.setPos(right_edge, row_center_y)
             self._output_rows[port].set_geometry(
                 label_x,
@@ -212,13 +258,12 @@ class UINode(QGraphicsRectItem):
     def layout_buttons(self):
         buttons = self.get_all_buttons()
         for i, button in enumerate(buttons):
-            x_pos = self.rect().width() - (i+1)*button.boundingRect().width()
+            x_pos = self.rect().width() - (i + 1) * button.boundingRect().width()
             button.setPos(x_pos, 0)
 
     def get_all_buttons(self) -> list[UINodeButton]:
         buttons = [
-            child for child in self.childItems()
-            if isinstance(child, UINodeButton)
+            child for child in self.childItems() if isinstance(child, UINodeButton)
         ]
         return buttons
 
@@ -268,6 +313,7 @@ class UINode(QGraphicsRectItem):
     def delete(self):
         for port in self.get_all_ports():
             self.remove_port(port)
+
 
 class UINodeButton(QGraphicsObject):
     clicked = Signal()
