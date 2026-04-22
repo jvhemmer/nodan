@@ -1,40 +1,41 @@
+import operator
 from typing import Any
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from PySide6.QtWidgets import QFileDialog
 
-import operator
+from nodan.core.node_system import Operation, PortSpec, RepeatedInputSpec
 
-from nodan.core.node_system import PortSpec, RepeatedInputSpec, Operation
 
 class ConstantValue(Operation):
     type_id = "value.constant"
     title = "Constant"
     category = "Values"
 
-    input_spec = (PortSpec("value", "object", editable=True),)
-    output_spec = (PortSpec("value", "object"),)
+    input_spec = [PortSpec("value", "object", editable=True)]
+    output_spec = [PortSpec("value", "object")]
 
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         return {"value": inputs["value"]}
+
 
 class DebugLog(Operation):
     type_id = "debug.log"
     title = "Debug Log"
     category = "Debug"
 
-    input_spec = (PortSpec("value", "object"),)
-    output_spec = ()
-    params = []
+    input_spec = [PortSpec("value", "object")]
+    output_spec = []
 
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, inputs: dict[str, Any]) -> None:
         print(inputs)
+
 
 class ElementWiseOperation(Operation):
     operation = staticmethod(operator.add)
 
-    input_spec = ()
+    input_spec = []
 
     repeated_inputs = RepeatedInputSpec(
         base_name="dataframe",
@@ -43,9 +44,9 @@ class ElementWiseOperation(Operation):
         default_count=2,
     )
 
-    output_spec = (PortSpec("result", "dataframe"),)
+    output_spec = [PortSpec("result", "dataframe")]
 
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         dfs = [df for df in inputs.values() if df is not None]
         if not dfs:
             raise ValueError(f"{self.title} requires at least one dataframe.")
@@ -55,15 +56,17 @@ class ElementWiseOperation(Operation):
             result = self.operation(result, df)
         return {"result": result}
 
+
 class ElementWiseSum(Operation):
     pass
+
 
 class MultiplyValue(Operation):
     type_id = "value.multiply"
     title = "Multiply"
     category = "Basic operation"
 
-    input_spec = (PortSpec("value", "object"),)
+    input_spec = [PortSpec("value", "object")]
 
     repeated_inputs = RepeatedInputSpec(
         base_name="value",
@@ -72,9 +75,9 @@ class MultiplyValue(Operation):
         default_count=1,
     )
 
-    output_spec = (PortSpec("result", "scalar"),)
+    output_spec = [PortSpec("result", "scalar")]
 
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         values = [value for value in inputs.values() if value is not None]
         if not values:
             raise ValueError("Multiply requires at least one input value.")
@@ -85,20 +88,21 @@ class MultiplyValue(Operation):
             result = result * float(value)
         return {"result": result}
 
+
 class ReadCSV(Operation):
     type_id = "file.read_csv"
     title = "Read CSV"
     category = "Files"
 
-    input_spec = (
+    input_spec = [
         PortSpec("file_path", "text", editable=True),
         PortSpec("separator", "text", default=",", editable=True),
         PortSpec("comment", "text", default="%", editable=True),
         PortSpec("header", "scalar", default=None, editable=True),
-    )
-    output_spec = (PortSpec("result", "dataframe"),)
+    ]
+    output_spec = [PortSpec("result", "dataframe")]
 
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         file_path = inputs["file_path"]
         separator = inputs["separator"]
         comment = inputs["comment"]
@@ -109,37 +113,31 @@ class ReadCSV(Operation):
             if not file_path:
                 raise ValueError("No file selected for opening.")
 
-
         csv = pd.read_csv(file_path, sep=separator, comment=comment, header=header)
 
         return {"result": csv}
+
 
 class FilterColumns(Operation):
     type_id = "filter.dataframe"
     title = "Filter columns"
     category = "DataFrame"
 
-    input_spec = (
-        PortSpec("dataframe", "dataframe"),
-    )
+    input_spec = [PortSpec("dataframe", "dataframe")]
 
     repeated_inputs = RepeatedInputSpec(
         base_name="column",
         data_type="object",
         min_count=1,
         default_count=1,
-        editable=True
+        editable=True,
     )
 
-    output_spec = (PortSpec("result", "dataframe"),)
+    output_spec = [PortSpec("result", "dataframe")]
 
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         df = inputs["dataframe"]
-        columns = [
-            value
-            for name, value in inputs.items()
-            if name.startswith("column")
-        ]
+        columns = [value for name, value in inputs.items() if name.startswith("column")]
 
         if all(isinstance(col, int) for col in columns):
             filtered = df.iloc[:, columns]
@@ -148,31 +146,30 @@ class FilterColumns(Operation):
 
         return {"result": filtered}
 
+
 class PlotXY(Operation):
     type_id = "plot.xy"
     title = "Plot XY"
     category = "Plot"
 
-    input_spec = (
-        PortSpec("x", "object"),
-    )
+    input_spec = [PortSpec("x", "object")]
 
     repeated_inputs = RepeatedInputSpec(
-        base_name="y",
-        data_type="object",
-        min_count=1,
-        default_count=1,
-        editable=True
+        base_name="y", data_type="object", min_count=1, default_count=1, editable=True
     )
 
-    output_spec = ()
+    output_spec = []
 
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         x = inputs["x"]
         ys = [
             value
             for name, value in sorted(
-                ((name, value) for name, value in inputs.items() if name.startswith("y")),
+                (
+                    (name, value)
+                    for name, value in inputs.items()
+                    if name.startswith("y")
+                ),
                 key=lambda item: int(item[0].removeprefix("y")),
             )
             if value is not None
@@ -210,7 +207,9 @@ class PlotXY(Operation):
     def _to_plot_values(self, value: Any) -> list[Any]:
         if isinstance(value, pd.DataFrame):
             if value.shape[1] != 1:
-                raise ValueError("PlotXY x input must be a Series or single-column DataFrame.")
+                raise ValueError(
+                    "PlotXY x input must be a Series or single-column DataFrame."
+                )
             return value.iloc[:, 0].tolist()
         if isinstance(value, pd.Series):
             return value.tolist()
@@ -224,26 +223,22 @@ class PlotXY(Operation):
 
     def _extract_series(self, value: Any) -> list[tuple[str | None, list[Any]]]:
         if isinstance(value, pd.DataFrame):
-            return [
-                (str(column), value[column].tolist())
-                for column in value.columns
-            ]
+            return [(str(column), value[column].tolist()) for column in value.columns]
         if isinstance(value, pd.Series):
             label = str(value.name) if value.name is not None else None
             return [(label, value.tolist())]
         return [(None, self._to_plot_values(value))]
+
 
 class RawCode(Operation):
     type_id = "code.execute"
     title = "Execute code"
     category = "Code"
 
-    input_spec = (
-        PortSpec("code", "text", editable=True),
-    )
+    input_spec = [PortSpec("code", "text", editable=True)]
 
-    output_spec = ()
+    output_spec = []
 
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, inputs: dict[str, Any]) -> None:
         text = inputs["code"]
         eval(text)
