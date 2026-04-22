@@ -1,22 +1,41 @@
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
+PortTypeRef = str | list[str]
+
+
+def normalize_data_types(data_type: PortTypeRef) -> tuple[str, ...]:
+    if isinstance(data_type, str):
+        return (data_type,)
+
+    return tuple(data_type)
+
+
+def format_data_type(data_type: PortTypeRef) -> str:
+    return " | ".join(normalize_data_types(data_type))
+
 
 @dataclass
 class PortSpec:
     name: str
-    data_type: str
+    data_type: PortTypeRef
     default: Any = None
     editable: bool = False
+
+    def data_types(self) -> tuple[str, ...]:
+        return normalize_data_types(self.data_type)
 
 
 @dataclass
 class RepeatedInputSpec:
     base_name: str
-    data_type: str
+    data_type: PortTypeRef
     min_count: int = 2
     default_count: int = 2
     editable: bool = False
+
+    def data_types(self) -> tuple[str, ...]:
+        return normalize_data_types(self.data_type)
 
 
 @dataclass(frozen=True)

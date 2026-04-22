@@ -44,7 +44,7 @@ class ElementWiseOperation(Operation):
         default_count=2,
     )
 
-    output_spec = [PortSpec("result", "table")]
+    output_spec = [PortSpec("result", "dataframe")]
 
     def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         dfs = [df for df in inputs.values() if df is not None]
@@ -75,7 +75,7 @@ class MultiplyValue(Operation):
         default_count=1,
     )
 
-    output_spec = [PortSpec("result", "data")]
+    output_spec = [PortSpec("result", "number")]
 
     def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         values = [value for value in inputs.values() if value is not None]
@@ -123,17 +123,17 @@ class FilterColumns(Operation):
     title = "Filter columns"
     category = "DataFrame"
 
-    input_spec = [PortSpec("dataframe", "table")]
+    input_spec = [PortSpec("dataframe", "dataframe")]
 
     repeated_inputs = RepeatedInputSpec(
         base_name="column",
-        data_type="data",
+        data_type=["number", "text"],
         min_count=1,
         default_count=1,
         editable=True,
     )
 
-    output_spec = [PortSpec("result", "table")]
+    output_spec = [PortSpec("result", "dataframe")]
 
     def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         df = inputs["dataframe"]
@@ -152,10 +152,10 @@ class PlotXY(Operation):
     title = "Plot XY"
     category = "Plot"
 
-    input_spec = [PortSpec("x", "data")]
+    input_spec = [PortSpec("x", "table")]
 
     repeated_inputs = RepeatedInputSpec(
-        base_name="y", data_type="object", min_count=1, default_count=1, editable=True
+        base_name="y", data_type="table", min_count=1, default_count=1, editable=True
     )
 
     output_spec = []

@@ -7,6 +7,8 @@ from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
 from PySide6.QtWidgets import QGraphicsProxyWidget, QGraphicsSimpleTextItem, QLineEdit
 
+from nodan.core.node_system import format_data_type
+
 if TYPE_CHECKING:
     from nodan.ui.node import UINode
     from nodan.ui.port import UIPort
@@ -54,7 +56,7 @@ class PortValueLineEdit(QLineEdit):
 
             # TODO: Editable area must take into account the type badge width
             metrics = QFontMetrics(self.font())
-            text = self.port_row.port.core_port.spec.data_type
+            text = format_data_type(self.port_row.port.core_port.spec.data_type)
             text_width = metrics.horizontalAdvance(text)
 
             text_start = self.width() - text_width - padding
@@ -82,7 +84,7 @@ class PortValueLineEdit(QLineEdit):
 
     def type_badge_width(self) -> float:
         padding = self.type_badge_padding
-        text = self.port_row.port.core_port.spec.data_type
+        text = format_data_type(self.port_row.port.core_port.spec.data_type)
         type_width = QFontMetrics(self.type_font).horizontalAdvance(text)
 
         return type_width + padding * 2

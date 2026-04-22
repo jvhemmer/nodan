@@ -1,15 +1,15 @@
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
 from PySide6.QtCore import QPointF
 
+from nodan.core.graph import Executor, Graph
 from nodan.core.node_system import CoreNode, CorePort, PortSpec
 from nodan.core.operations import Operation
 from nodan.core.type_parser import PortValueParser
 from nodan.ui.canvas import Canvas
-from nodan.core.graph import Graph, Executor
 from nodan.ui.connection import UIConnection
 from nodan.ui.node import UINode
 from nodan.ui.port import UIPort
@@ -19,6 +19,7 @@ from nodan.ui.port import UIPort
 class UINodeBinding:
     core_node: CoreNode
     ui_node: UINode
+
 
 class Coordinator:
     def __init__(self, canvas: Canvas):
@@ -43,14 +44,14 @@ class Coordinator:
         return node.id
 
     def _create_node(
-            self,
-            type_id: str,
-            pos: QPointF,
-            *,
-            node_id: str | None = None,
-            state: dict[str, Any] | None = None,
-            params: dict[str, Any] | None = None,
-            ui_name: str | None = None,
+        self,
+        type_id: str,
+        pos: QPointF,
+        *,
+        node_id: str | None = None,
+        state: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        ui_name: str | None = None,
     ) -> CoreNode:
         # Instantiate the definition
         definition_cls = Operation.registry[type_id]
@@ -86,25 +87,27 @@ class Coordinator:
             return False
         if source_node_id == target_node_id:
             return False
-        if self._connection_exists(source_node_id, source_name, target_node_id, target_name):
+        if self._connection_exists(
+            source_node_id, source_name, target_node_id, target_name
+        ):
             return False
         if self._input_already_connected(target_node_id, target_name):
             return False
         return True
 
     def _connection_exists(
-            self,
-            source_node_id: str,
-            source_port: str,
-            target_node_id: str,
-            target_port: str,
+        self,
+        source_node_id: str,
+        source_port: str,
+        target_node_id: str,
+        target_port: str,
     ) -> bool:
         for connection in self.graph.connections:
             if (
-                    connection.source_node_id == source_node_id
-                    and connection.source_port == source_port
-                    and connection.target_node_id == target_node_id
-                    and connection.target_port == target_port
+                connection.source_node_id == source_node_id
+                and connection.source_port == source_port
+                and connection.target_node_id == target_node_id
+                and connection.target_port == target_port
             ):
                 return True
         return False
@@ -112,8 +115,8 @@ class Coordinator:
     def _input_already_connected(self, target_node_id: str, target_port: str) -> bool:
         for connection in self.graph.connections:
             if (
-                    connection.target_node_id == target_node_id
-                    and connection.target_port == target_port
+                connection.target_node_id == target_node_id
+                and connection.target_port == target_port
             ):
                 return True
         return False
@@ -135,7 +138,8 @@ class Coordinator:
 
     def disconnect_ports(self, source: UIPort, target: UIPort) -> None:
         self.graph.connections = [
-            c for c in self.graph.connections
+            c
+            for c in self.graph.connections
             if not (
                 c.source_node_id == source.core_port.node_id
                 and c.source_port == source.core_port.spec.name
@@ -147,14 +151,14 @@ class Coordinator:
         source.ui_node.sync_port_widgets()
         target.ui_node.sync_port_widgets()
 
-
     def remove_node(self, node_id: str) -> None:
         binding = self.node_bindings.pop(node_id, None)
         if binding is None:
             return
 
         self.graph.connections = [
-            c for c in self.graph.connections
+            c
+            for c in self.graph.connections
             if c.source_node_id != node_id and c.target_node_id != node_id
         ]
         self.graph.nodes.pop(node_id, None)
@@ -189,7 +193,8 @@ class Coordinator:
             local_input_values = {
                 port.spec.name: self._serialize_value(port.value)
                 for port in core_node.inputs
-                if port.spec.editable and not self._input_already_connected(core_node.id, port.spec.name)
+                if port.spec.editable
+                and not self._input_already_connected(core_node.id, port.spec.name)
             }
             nodes.append(
                 {
@@ -250,8 +255,12 @@ class Coordinator:
             if source_binding is None or target_binding is None:
                 continue
 
-            source_port = self._find_ui_port(source_binding.ui_node.outputs, connection_data["source_port"])
-            target_port = self._find_ui_port(target_binding.ui_node.inputs, connection_data["target_port"])
+            source_port = self._find_ui_port(
+                source_binding.ui_node.outputs, connection_data["source_port"]
+            )
+            target_port = self._find_ui_port(
+                target_binding.ui_node.inputs, connection_data["target_port"]
+            )
             if source_port is None or target_port is None:
                 continue
 
@@ -264,9 +273,11 @@ class Coordinator:
         node.params[name] = value
         self.executor.cache.clear()
 
-    def evaluate_node(self, node: CoreNode) -> dict:
+    def evaluate_node(self, node: CoreNode) -> dict | None:
         self.executor.cache.clear()
-        result = self.executor.evaluate_node(node.id) # TODO: Change evaluate_node to use CoreNode instead of ID
+        result = self.executor.evaluate_node(
+            node.id
+        )  # TODO: Change evaluate_node to use CoreNode instead of ID
         self._refresh_all_nodes()
         return result
 
@@ -337,7 +348,9 @@ class Coordinator:
         pass
 
     def _build_ui_node(self, node: CoreNode, pos: QPointF) -> UINode:
-        ui_node = UINode(self.canvas, node, pos.x(), pos.y(), name=node.definition.title)
+        ui_node = UINode(
+            self.canvas, node, pos.x(), pos.y(), name=node.definition.title
+        )
         self.canvas.scene().addItem(ui_node)
         self.canvas.nodes.append(ui_node)
 
@@ -370,7 +383,9 @@ class Coordinator:
             raise ValueError(f"Port '{core_port.spec.name}' is not editable")
 
         if port.connections:
-            raise ValueError(f"Port '{core_port.spec.name}' is connected and cannot be edited")
+            raise ValueError(
+                f"Port '{core_port.spec.name}' is connected and cannot be edited"
+            )
 
         core_port.value = self.value_parser.parse(core_port.spec.data_type, raw_value)
         self.executor.cache.clear()
@@ -394,5 +409,3 @@ class Coordinator:
         if isinstance(value, dict):
             return {key: self._serialize_value(item) for key, item in value.items()}
         raise TypeError(f"Cannot serialize value of type {type(value).__name__}")
-
-
