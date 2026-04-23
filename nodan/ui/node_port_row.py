@@ -3,9 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pandas as pd
-from PySide6.QtCore import QTimer, Qt, Signal, QPointF, QRectF
-from PySide6.QtGui import QFont, QPainter, QColor, QFontMetrics
+from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
 from PySide6.QtWidgets import QGraphicsProxyWidget, QGraphicsSimpleTextItem, QLineEdit
+
+from nodan.core.node_system import format_data_type
 
 if TYPE_CHECKING:
     from nodan.ui.node import UINode
@@ -19,7 +21,7 @@ class PortValueLineEdit(QLineEdit):
 
     def __init__(self, parent: UINodePortRow):
         super().__init__()
-        self.parent = parent
+        self.port_row = parent
 
         self.hovered = False
         self.normal_min_width = self.width()
@@ -54,7 +56,7 @@ class PortValueLineEdit(QLineEdit):
 
             # TODO: Editable area must take into account the type badge width
             metrics = QFontMetrics(self.font())
-            text = self.parent.port.core_port.spec.data_type
+            text = format_data_type(self.port_row.port.core_port.spec.data_type)
             text_width = metrics.horizontalAdvance(text)
 
             text_start = self.width() - text_width - padding
@@ -64,7 +66,13 @@ class PortValueLineEdit(QLineEdit):
             painter = QPainter(self)
             painter.setBrush(QColor("#262626"))
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawRoundedRect(QRectF(text_start - padding, 0, text_width + 2*padding, self.height()), 4, 4)
+            painter.drawRoundedRect(
+                QRectF(
+                    text_start - padding, 0, text_width + 2 * padding, self.height()
+                ),
+                4,
+                4,
+            )
 
             # Draw the text representing the port type
             painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -76,11 +84,10 @@ class PortValueLineEdit(QLineEdit):
 
     def type_badge_width(self) -> float:
         padding = self.type_badge_padding
-        text = self.parent.port.core_port.spec.data_type
+        text = format_data_type(self.port_row.port.core_port.spec.data_type)
         type_width = QFontMetrics(self.type_font).horizontalAdvance(text)
 
         return type_width + padding * 2
-
 
     # === Key/Mouse events ===
     def keyPressEvent(self, event) -> None:
@@ -137,9 +144,18 @@ class UINodePortRow:
         if self.line_edit.text() != text:
             self.line_edit.setText(text)
         if self.port.kind == "input":
-            self.line_edit.setReadOnly(not (self.port.is_editable() and not self.port.has_connection()))
+            self.line_edit.setReadOnly(
+                not (self.port.is_editable() and not self.port.has_connection())
+            )
 
-    def set_geometry(self, label_x: float, row_center_y: float, field_x: float, field_width: float, field_height: int) -> None:
+    def set_geometry(
+        self,
+        label_x: float,
+        row_center_y: float,
+        field_x: float,
+        field_width: float,
+        field_height: int,
+    ) -> None:
         self._base_field_width = int(field_width)
         self._field_height = field_height
         label_y = row_center_y - (self.label_item.boundingRect().height() / 2)
@@ -180,7 +196,9 @@ class UINodePortRow:
         if not self.port.is_editable() or self.port.has_connection():
             self.sync()
         else:
-            self.node.canvas.coordinator.set_port_value(self.port, self.line_edit.text())
+            self.node.canvas.coordinator.set_port_value(
+                self.port, self.line_edit.text()
+            )
             self.sync()
 
         self.line_edit.clearFocus()

@@ -1,38 +1,54 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, ClassVar
+
+PortTypeRef = str | list[str]
+
+
+def normalize_data_types(data_type: PortTypeRef) -> tuple[str, ...]:
+    if isinstance(data_type, str):
+        return (data_type,)
+
+    return tuple(data_type)
+
+
+def format_data_type(data_type: PortTypeRef) -> str:
+    return " | ".join(normalize_data_types(data_type))
 
 
 @dataclass
 class PortSpec:
     name: str
-    data_type: str
+    data_type: PortTypeRef
     default: Any = None
     editable: bool = False
 
-@dataclass
-class ParamSpec:
-    name: str
-    param_type: str
-    default: Any = None
+    def data_types(self) -> tuple[str, ...]:
+        return normalize_data_types(self.data_type)
+
 
 @dataclass
 class RepeatedInputSpec:
     base_name: str
-    data_type: str
+    data_type: PortTypeRef
     min_count: int = 2
     default_count: int = 2
     editable: bool = False
 
+    def data_types(self) -> tuple[str, ...]:
+        return normalize_data_types(self.data_type)
+
+
+@dataclass(frozen=True)
 class Operation:
-    registry: dict[str, type["Operation"]] = {}
+    registry: ClassVar[dict[str, type["Operation"]]] = {}
 
-    type_id = ""
-    title = ""
-    category = "General"
+    type_id: ClassVar[str] = ""
+    title: ClassVar[str] = ""
+    category: ClassVar[str] = "General"
 
-    input_spec: tuple[PortSpec, ...] = ()
-    output_spec: tuple[PortSpec, ...] = ()
-    repeated_inputs: RepeatedInputSpec | None = None
+    input_spec: ClassVar[list[PortSpec]] = []
+    output_spec: ClassVar[list[PortSpec]] = []
+    repeated_inputs: ClassVar[RepeatedInputSpec | None] = None
 
     def __init__(self):
         self.validate_ports()
@@ -52,7 +68,9 @@ class Operation:
         ports = list(self.input_spec)
 
         if self.repeated_inputs is not None:
-            count = instance.state.get("input_count", self.repeated_inputs.default_count)
+            count = instance.state.get(
+                "input_count", self.repeated_inputs.default_count
+            )
             for i in range(count):
                 ports.append(
                     PortSpec(
@@ -64,7 +82,7 @@ class Operation:
 
         return ports
 
-    def evaluate(self, inputs: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any] | None:
         raise NotImplementedError
 
     def validate_ports(self):
@@ -80,12 +98,14 @@ class Operation:
                 raise ValueError(f"Duplicate output port {port.name}")
             seen_outputs.add(port.name)
 
+
 @dataclass
 class CorePort:
     node_id: str
     kind: str
     spec: PortSpec
     value: Any = None
+
 
 @dataclass
 class CoreNode:
@@ -120,6 +140,7 @@ class CoreNode:
             if port.spec.name == name:
                 return port
         return None
+
 
 @dataclass
 class CoreConnection:

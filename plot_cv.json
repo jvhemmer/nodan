@@ -1,38 +1,36 @@
 {
   "nodes": [
     {
-      "id": "2e01e6ca-3366-4eb3-b305-87130d6a5125",
+      "id": "37743948-00e1-4b33-bbcc-601dd9d58b45",
       "type_id": "file.read_csv",
       "name": "Read CSV",
-      "x": -284.0,
-      "y": -106.0,
+      "x": -443.0,
+      "y": -272.0,
       "state": {},
       "params": {},
       "input_values": {
-        "file_path": "C:\\Users\\jhemmer\\PycharmProjects\\NoDAn\\test_file.csv",
+        "file_path": "C:\\Users\\jhemmer\\nodan\\test_file.csv",
         "separator": ",",
         "comment": "%",
         "header": 0
       }
     },
     {
-      "id": "bf7c1dc6-15f3-4d7e-ac53-3557318e112f",
-      "type_id": "value.constant",
-      "name": "Constant",
-      "x": 2.0,
-      "y": 205.0,
+      "id": "62984960-3459-4e0b-a9fc-928efd9ad712",
+      "type_id": "value.multiply",
+      "name": "Multiply",
+      "x": 132.0,
+      "y": 36.0,
       "state": {},
       "params": {},
-      "input_values": {
-        "value": "1000"
-      }
+      "input_values": {}
     },
     {
-      "id": "b8ebd910-8b3b-42ff-b59a-37f1c8116baa",
+      "id": "32368f13-b71d-44a3-94ae-4101ef41c405",
       "type_id": "filter.dataframe",
       "name": "Filter columns",
-      "x": -8.0,
-      "y": 41.0,
+      "x": -149.0,
+      "y": -114.0,
       "state": {},
       "params": {},
       "input_values": {
@@ -40,11 +38,11 @@
       }
     },
     {
-      "id": "51a0a112-704c-460c-94d1-272d1c02b2e0",
+      "id": "fef7b732-9e02-4c61-aea8-a46b10680e68",
       "type_id": "filter.dataframe",
       "name": "Filter columns",
-      "x": 28.0,
-      "y": -96.0,
+      "x": -148.0,
+      "y": -235.0,
       "state": {},
       "params": {},
       "input_values": {
@@ -52,21 +50,23 @@
       }
     },
     {
-      "id": "1fe3bb85-799e-4b87-93ff-3e73c8f6d174",
-      "type_id": "value.multiply",
-      "name": "Multiply",
-      "x": 265.0,
-      "y": 129.0,
+      "id": "75d08727-6cf1-432b-a576-6cddc6c0969b",
+      "type_id": "value.constant",
+      "name": "Constant",
+      "x": -162.0,
+      "y": 62.0,
       "state": {},
       "params": {},
-      "input_values": {}
+      "input_values": {
+        "value": "1000"
+      }
     },
     {
-      "id": "1c13048f-d7ca-4907-a0d4-c90caf58b6e2",
+      "id": "942960e1-3ab5-4d20-a99c-0279c479eadd",
       "type_id": "plot.xy",
       "name": "Plot XY",
-      "x": 534.0,
-      "y": 25.0,
+      "x": 411.0,
+      "y": -86.0,
       "state": {},
       "params": {},
       "input_values": {}
@@ -74,40 +74,40 @@
   ],
   "connections": [
     {
-      "source_node_id": "2e01e6ca-3366-4eb3-b305-87130d6a5125",
+      "source_node_id": "37743948-00e1-4b33-bbcc-601dd9d58b45",
       "source_port": "result",
-      "target_node_id": "b8ebd910-8b3b-42ff-b59a-37f1c8116baa",
+      "target_node_id": "32368f13-b71d-44a3-94ae-4101ef41c405",
       "target_port": "dataframe"
     },
     {
-      "source_node_id": "2e01e6ca-3366-4eb3-b305-87130d6a5125",
+      "source_node_id": "37743948-00e1-4b33-bbcc-601dd9d58b45",
       "source_port": "result",
-      "target_node_id": "51a0a112-704c-460c-94d1-272d1c02b2e0",
+      "target_node_id": "fef7b732-9e02-4c61-aea8-a46b10680e68",
       "target_port": "dataframe"
     },
     {
-      "source_node_id": "1fe3bb85-799e-4b87-93ff-3e73c8f6d174",
-      "source_port": "result",
-      "target_node_id": "1c13048f-d7ca-4907-a0d4-c90caf58b6e2",
-      "target_port": "y1"
+      "source_node_id": "75d08727-6cf1-432b-a576-6cddc6c0969b",
+      "source_port": "value",
+      "target_node_id": "62984960-3459-4e0b-a9fc-928efd9ad712",
+      "target_port": "value1"
     },
     {
-      "source_node_id": "51a0a112-704c-460c-94d1-272d1c02b2e0",
+      "source_node_id": "32368f13-b71d-44a3-94ae-4101ef41c405",
       "source_port": "result",
-      "target_node_id": "1c13048f-d7ca-4907-a0d4-c90caf58b6e2",
-      "target_port": "x"
-    },
-    {
-      "source_node_id": "b8ebd910-8b3b-42ff-b59a-37f1c8116baa",
-      "source_port": "result",
-      "target_node_id": "1fe3bb85-799e-4b87-93ff-3e73c8f6d174",
+      "target_node_id": "62984960-3459-4e0b-a9fc-928efd9ad712",
       "target_port": "value"
     },
     {
-      "source_node_id": "bf7c1dc6-15f3-4d7e-ac53-3557318e112f",
-      "source_port": "value",
-      "target_node_id": "1fe3bb85-799e-4b87-93ff-3e73c8f6d174",
-      "target_port": "value1"
+      "source_node_id": "62984960-3459-4e0b-a9fc-928efd9ad712",
+      "source_port": "result",
+      "target_node_id": "942960e1-3ab5-4d20-a99c-0279c479eadd",
+      "target_port": "y1"
+    },
+    {
+      "source_node_id": "fef7b732-9e02-4c61-aea8-a46b10680e68",
+      "source_port": "result",
+      "target_node_id": "942960e1-3ab5-4d20-a99c-0279c479eadd",
+      "target_port": "x"
     }
   ]
 }

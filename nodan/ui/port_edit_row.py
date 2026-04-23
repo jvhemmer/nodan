@@ -1,6 +1,7 @@
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QPushButton, QLabel
 from nodan.ui.port import UIPort
+from nodan.core.node_system import format_data_type
 
 ACTIONS_COLUMN_WIDTH = 90
 
@@ -16,7 +17,7 @@ class PortEditRow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.name_edit = QLineEdit(port.name)
-        self.type_value = QLabel(port.core_port.spec.data_type)
+        self.type_value = QLabel(format_data_type(port.core_port.spec.data_type))
         self.type_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
         value_text = "" if port.core_port.value is None else str(port.core_port.value)
         self.value_edit = QLineEdit(value_text)
