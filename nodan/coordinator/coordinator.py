@@ -1,4 +1,5 @@
 import json
+import keyword
 from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
@@ -323,18 +324,15 @@ class Coordinator:
 
         node = port.ui_node.core_node
         core_port = port.core_port
-        prefix = repeated.base_name
-
-        if not core_port.spec.name.startswith(prefix):
-            return
-
-        try:
-            index = int(core_port.spec.name.removeprefix(prefix))
-        except ValueError:
+        repeated_ports = node.inputs[repeated.min_count :]
+        if core_port not in repeated_ports:
             return
 
         current_count = node.state.get("input_count", repeated.default_count)
-        if index != current_count or current_count <= repeated.min_count:
+        if current_count <= repeated.min_count:
+            return
+
+        if core_port is not node.inputs[-1]:
             return
 
         node.inputs.remove(core_port)
@@ -388,6 +386,42 @@ class Coordinator:
             )
 
         core_port.value = self.value_parser.parse(core_port.spec.data_type, raw_value)
+        self.executor.cache.clear()
+        port.ui_node.sync_port_widgets()
+
+    def rename_port(self, port: UIPort, raw_name: str) -> None:
+        core_port = port.core_port
+        node = port.ui_node.core_node
+        repeated = node.definition.repeated_inputs
+
+        if port.kind != "input" or repeated is None:
+            raise ValueError("Only repeated input ports can be renamed")
+
+        min_count = repeated.min_count
+        repeated_ports = node.inputs[min_count:]
+        if core_port not in repeated_ports:
+            raise ValueError("Only user-added repeated input ports can be renamed")
+
+        new_name = raw_name.strip()
+        if not new_name:
+            raise ValueError("Port name cannot be empty")
+        if not new_name.isidentifier() or keyword.iskeyword(new_name):
+            raise ValueError(f"Invalid port name '{new_name}'")
+
+        old_name = core_port.spec.name
+        if new_name == old_name:
+            return
+
+        if node.get_input_port(new_name) is not None:
+            raise ValueError(f"Input port '{new_name}' already exists")
+
+        core_port.spec.name = new_name
+        port.name = new_name
+
+        for connection in self.graph.connections:
+            if connection.target_node_id == node.id and connection.target_port == old_name:
+                connection.target_port = new_name
+
         self.executor.cache.clear()
         port.ui_node.sync_port_widgets()
 

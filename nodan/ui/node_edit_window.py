@@ -122,12 +122,24 @@ class NodeEditWindow(QWidget):
 
     def add_port_row(self, port: UIPort):
         row = PortEditRow(port, self)
+        row.set_name_editable(False)
         row.set_value_editable(False)
 
         if port.is_editable() and not port.has_connection():
             row.set_value_editable(True)
 
+        repeated = self.node.core_node.definition.repeated_inputs
+        is_repeated_input = (
+            port.kind == "input"
+            and repeated is not None
+            and port.core_port in self.node.core_node.inputs
+            and port.core_port not in self.node.core_node.inputs[: repeated.min_count]
+        )
+        if is_repeated_input:
+            row.set_name_editable(True)
+
         row.remove_requested.connect(self.remove_port)
+        row.name_changed.connect(self.on_port_name_changed)
         self.rows[port] = row
 
         if port.kind == "input":
@@ -140,6 +152,10 @@ class NodeEditWindow(QWidget):
 
     def on_port_value_changed(self, port: UIPort, value: str):
         self.canvas.coordinator.set_port_value(port, value)
+
+    def on_port_name_changed(self, port: UIPort, name: str):
+        self.canvas.coordinator.rename_port(port, name)
+        self.rebuild_rows()
 
     def add_input(self):
         self.add_input_requested.emit(self.node.core_node)
