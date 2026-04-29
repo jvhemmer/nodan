@@ -254,4 +254,9 @@ class RawCode(Operation):
             if name != "code"
         }
 
-        exec("import matplotlib.pyplot as plt\n" + code, scope)
+        exec(
+            "import matplotlib.pyplot as plt\n" +
+            "import numpy as np\n" +
+            code,
+            scope
+        )
