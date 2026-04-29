@@ -145,8 +145,8 @@ class Canvas(QGraphicsView):
             if item is not None:
                 if isinstance(item, UINode):
                     w = NodeEditWindow(item, self)
-                    w.show()
                     self.node_edit_windows.append(w)
+                    w.show()
                     w.evaluate_requested.connect(self.coordinator.evaluate_node)
                     w.add_input_requested.connect(self.coordinator.add_repeated_input)
                     event.accept()

@@ -27,6 +27,8 @@ class NodeEditWindow(QWidget):
         self.node = node
         self.rows = {}
 
+        self.value_editor_windows = []
+
         self.setWindowTitle(node.name)
 
         self.layout = QVBoxLayout(self)
