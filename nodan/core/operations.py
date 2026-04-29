@@ -152,7 +152,10 @@ class PlotXY(Operation):
     title = "Plot XY"
     category = "Plot"
 
-    input_spec = [PortSpec("x", "table")]
+    input_spec = [
+        PortSpec("x", "table"),
+        # PortSpec("spec", "text", editable=True, default=None),
+  ]
 
     repeated_inputs = RepeatedInputSpec(
         base_name="y", data_type="table", min_count=1, default_count=1, editable=True
@@ -194,7 +197,6 @@ class PlotXY(Operation):
 
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-        ax.set_title("Plot XY")
 
         if overlay_count > 1:
             ax.legend()
@@ -237,8 +239,19 @@ class RawCode(Operation):
 
     input_spec = [PortSpec("code", "text", editable=True)]
 
+    repeated_inputs = RepeatedInputSpec(
+        base_name="var", data_type="data", min_count=1, default_count=1, editable=True
+    )
+
     output_spec = []
 
     def evaluate(self, inputs: dict[str, Any]) -> None:
-        text = inputs["code"]
-        eval(text)
+        code = inputs["code"]
+
+        scope = {
+            name: value
+            for name, value in inputs.items()
+            if name != "code"
+        }
+
+        exec("import matplotlib.pyplot as plt\n" + code, scope)
