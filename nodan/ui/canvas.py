@@ -109,7 +109,14 @@ class Canvas(QGraphicsView):
         if self.pending_connection is None:
             # If there's no pending connection
             if port.kind != "output":
-                return
+                if len(port.connections) == 1:
+                    # Detach if the input has only one connection
+                    connection = port.connections[0]
+                    self.detach_connection(connection)
+                    return
+                else:
+                    return
+
             self.start_pending_connection(port)
             return
 
