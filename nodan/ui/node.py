@@ -165,7 +165,11 @@ class UINode(QGraphicsRectItem):
         self.layout_buttons()
 
     def _layout_inputs(self, label_width: float, field_width: float) -> None:
-        for index, port in enumerate(self.inputs):
+        ordered_inputs = sorted(
+            self.inputs,
+            key=lambda port: port.core_port.spec.hideable,
+        )
+        for index, port in enumerate(ordered_inputs):
             row_center_y = (
                 self._title_height
                 + self._body_top_gap

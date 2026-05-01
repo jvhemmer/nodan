@@ -21,6 +21,7 @@ class PortSpec:
     data_type: PortTypeRef
     default: Any = None
     editable: bool = False
+    hideable: bool = False
 
     def data_types(self) -> tuple[str, ...]:
         return normalize_data_types(self.data_type)
