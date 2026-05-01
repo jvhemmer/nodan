@@ -203,7 +203,7 @@ class UINodePortRow:
 
         self.line_edit.clearFocus()
         self._rebuild_editor()
-        QTimer.singleShot(0, self.node.canvas.viewport().setFocus)
+        # QTimer.singleShot(0, self.node.canvas.viewport().setFocus)
 
     def _build_line_edit(self) -> PortValueLineEdit:
         line_edit = PortValueLineEdit(self)

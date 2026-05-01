@@ -6,7 +6,7 @@ from nodan.ui.port import UIPort
 if TYPE_CHECKING:
     from nodan.ui.canvas import Canvas
 
-from PySide6.QtCore import QTimer, Signal
+from PySide6.QtCore import Signal, QTimer
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QPushButton, QLineEdit, \
     QLabel, QGridLayout
@@ -97,7 +97,7 @@ class NodeEditWindow(QWidget):
         for port in self.node.outputs:
             self.add_port_row(port)
 
-        QTimer.singleShot(0, self.adjustSize)
+        self.adjustSize()
 
     def _build_port_header(self) -> QWidget:
         header = QWidget(self)
@@ -149,7 +149,6 @@ class NodeEditWindow(QWidget):
         else:
             self.output_layout.addWidget(row)
 
-        QTimer.singleShot(0, self.adjustSize)
         row.value_changed.connect(self.on_port_value_changed)
 
     def on_port_value_changed(self, port: UIPort, value: str):

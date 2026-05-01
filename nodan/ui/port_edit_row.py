@@ -13,7 +13,7 @@ class PortEditRow(QWidget):
     name_changed = Signal(object, str)
 
     def __init__(self, port: UIPort, parent):
-        super().__init__(parent)
+        super().__init__()
 
         self.node_edit_window = parent
         self.port = port
@@ -33,8 +33,9 @@ class PortEditRow(QWidget):
         self.actions_layout.setContentsMargins(0, 0, 0, 0)
         self.actions_layout.setSpacing(4)
 
-        self.edit_button.setVisible(port.kind == "input" and port.is_editable())
         self.actions_layout.addWidget(self.edit_button)
+
+        self.edit_button.setVisible(port.kind == "input" and port.is_editable())
 
         layout.addWidget(self.name_edit, 2)
         layout.addWidget(self.type_value, 2)
