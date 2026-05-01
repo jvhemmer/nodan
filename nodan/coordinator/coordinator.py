@@ -328,15 +328,7 @@ class Coordinator:
         if core_port not in repeated_ports:
             return
 
-        current_count = node.state.get("input_count", repeated.default_count)
-        if current_count <= repeated.min_count:
-            return
-
-        if core_port is not node.inputs[-1]:
-            return
-
         node.inputs.remove(core_port)
-        node.state["input_count"] = current_count - 1
         self.executor.cache.clear()
         port.ui_node.remove_port(port)
 
