@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QRectF, Qt, Signal
+from PySide6.QtCore import QEasingCurve, QRectF, Qt, Signal, QVariantAnimation
 from PySide6.QtGui import QBrush, QColor, QFont, QPen
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
@@ -37,6 +37,7 @@ class UINode(QGraphicsRectItem):
         self.canvas = parent
         self.core_node = core_node
 
+        # State
         self.inputs: list[UIPort] = []
         self.outputs: list[UIPort] = []
         self._input_rows: dict[UIPort, UINodePortRow] = {}
@@ -44,7 +45,9 @@ class UINode(QGraphicsRectItem):
         self._last_context_pos = None
         self.name = name
         self._show_hideable_inputs = False
+        self._animated_hidden_rows = 0.0
 
+        # Geometry
         self._corner_radius = 8
         self._content_margin = 16
         self._title_height = 26
@@ -55,6 +58,7 @@ class UINode(QGraphicsRectItem):
         self._min_label_width = 60
         self._field_width = 100
 
+        # Colors
         self._outline_color = QColor("#262626")
         self._selected_outline_color = QColor("#5a5a5a")
         self._header_color = QColor("#262626")
@@ -63,6 +67,8 @@ class UINode(QGraphicsRectItem):
         self._text_brush = QBrush(QColor("#eceff4"))
         self._fill_brush = QBrush(QColor("#1e1e1e"))
 
+
+        # Buttons
         # TODO: Find a way for the coordinator to never be None
         self.delete_button = UINodeButton(self, "/x_filled.svg", "/x_outline.svg")
         self.delete_button.clicked.connect(
@@ -76,17 +82,21 @@ class UINode(QGraphicsRectItem):
         )
         self.eval_button.setVisible(False)
 
+        # Animations
+        self._hover_animation = QVariantAnimation()
+        self._hover_animation.setDuration(180)
+        self._hover_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._hover_animation.valueChanged.connect(self._on_hover_animation_changed)
+
+        # Initialize
         self.setPos(x, y)
-
-        self.setBrush(self._fill_brush)
-        self.setPen(self._outline_pen)
-
         self.setFlags(
             QGraphicsRectItem.GraphicsItemFlag.ItemIsMovable
             | QGraphicsRectItem.GraphicsItemFlag.ItemIsSelectable
             | QGraphicsRectItem.GraphicsItemFlag.ItemSendsGeometryChanges
         )
-
+        self.setBrush(self._fill_brush)
+        self.setPen(self._outline_pen)
         self.title = QGraphicsSimpleTextItem(self)
         self.title.setBrush(self._text_brush)
         self.change_label(name)
@@ -138,8 +148,12 @@ class UINode(QGraphicsRectItem):
 
     # === Layout ===
     def layout_ports(self):
-        visible_inputs = self._visible_inputs()
-        rows = max(len(visible_inputs) + len(self.outputs), 1)
+        rows = max(
+            len(self._base_visible_inputs())
+            + self._animated_hidden_rows
+            + len(self.outputs),
+            1,
+        )
         label_width = self._compute_label_width()
         field_width = self._compute_field_width()
         content_width = (
@@ -172,14 +186,21 @@ class UINode(QGraphicsRectItem):
             key=lambda port: port.core_port.spec.hideable,
         )
         visible_index = 0
+        hidden_index = 0
         for port in ordered_inputs:
-            is_visible = (
-                self._show_hideable_inputs
-                or not port.core_port.spec.hideable
-                or port.has_connection()
-            )
-            self._set_input_visibility(port, is_visible)
-            if not is_visible:
+            if self._is_hidden_candidate(port):
+                opacity = max(0.0, min(1.0, self._animated_hidden_rows - hidden_index))
+                is_visible = self._show_hideable_inputs or opacity > 0.0
+                self._set_input_row_state(port, is_visible, opacity)
+                if not is_visible:
+                    hidden_index += 1
+                    continue
+            else:
+                self._set_input_row_state(port, True, 1.0)
+                opacity = 1.0
+
+            if not opacity:
+                hidden_index += 1
                 continue
 
             row_center_y = (
@@ -198,6 +219,8 @@ class UINode(QGraphicsRectItem):
             )
             port.refresh_connections()
             visible_index += 1
+            if self._is_hidden_candidate(port):
+                hidden_index += 1
 
     def _layout_outputs(self, label_width: float, field_width: float) -> None:
         right_edge = self.rect().width()
@@ -205,7 +228,9 @@ class UINode(QGraphicsRectItem):
         value_x = self._content_margin + label_width + self._horizontal_gap
 
         for index, port in enumerate(self.outputs):
-            row_index = len(self._visible_inputs()) + index
+            row_index = (
+                len(self._base_visible_inputs()) + self._animated_hidden_rows + index
+            )
             row_center_y = (
                 self._title_height
                 + self._body_top_gap
@@ -233,20 +258,29 @@ class UINode(QGraphicsRectItem):
         for row in self._output_rows.values():
             row.sync()
 
-    def _visible_inputs(self) -> list[UIPort]:
+    def _base_visible_inputs(self) -> list[UIPort]:
         return [
             port
             for port in self.inputs
-            if self._show_hideable_inputs
-            or not port.core_port.spec.hideable
-            or port.has_connection()
+            if not self._is_hidden_candidate(port)
         ]
 
-    def _set_input_visibility(self, port: UIPort, visible: bool) -> None:
+    def _hidden_candidate_inputs(self) -> list[UIPort]:
+        return [port for port in self.inputs if self._is_hidden_candidate(port)]
+
+    def _is_hidden_candidate(self, port: UIPort) -> bool:
+        return port.core_port.spec.hideable and not port.has_connection()
+
+    def _set_input_row_state(
+        self, port: UIPort, visible: bool, opacity: float = 1.0
+    ) -> None:
         row = self._input_rows[port]
         port.setVisible(visible)
         row.label_item.setVisible(visible)
         row.proxy.setVisible(visible)
+        port.setOpacity(opacity)
+        row.label_item.setOpacity(opacity)
+        row.proxy.setOpacity(opacity)
 
     # === Port management ===
     def add_port(self, kind: str, core_port: CorePort) -> UIPort:
@@ -324,17 +358,30 @@ class UINode(QGraphicsRectItem):
 
     def hoverEnterEvent(self, event):
         self._show_hideable_inputs = True
-        self.layout_ports()
+        self._start_hover_animation(True)
         for button in self.get_all_buttons():
             button.setVisible(True)
         super().hoverEnterEvent(event)
 
     def hoverLeaveEvent(self, event):
         self._show_hideable_inputs = False
-        self.layout_ports()
+        self._start_hover_animation(False)
         for button in self.get_all_buttons():
             button.setVisible(False)
         super().hoverLeaveEvent(event)
+
+    # === Animations ===
+    def _start_hover_animation(self, expanded: bool) -> None:
+        hidden_count = len(self._hidden_candidate_inputs())
+        target = float(hidden_count if expanded else 0)
+        self._hover_animation.stop()
+        self._hover_animation.setStartValue(self._animated_hidden_rows)
+        self._hover_animation.setEndValue(target)
+        self._hover_animation.start()
+
+    def _on_hover_animation_changed(self, value) -> None:
+        self._animated_hidden_rows = float(value)
+        self.layout_ports()
 
     # === Helpers ===
     def change_label(self, label: str):
