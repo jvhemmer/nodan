@@ -43,6 +43,7 @@ class UINode(QGraphicsRectItem):
         self._output_rows: dict[UIPort, UINodePortRow] = {}
         self._last_context_pos = None
         self.name = name
+        self._show_hideable_inputs = False
 
         self._corner_radius = 8
         self._content_margin = 16
@@ -137,7 +138,8 @@ class UINode(QGraphicsRectItem):
 
     # === Layout ===
     def layout_ports(self):
-        rows = max(len(self.inputs) + len(self.outputs), 1)
+        visible_inputs = self._visible_inputs()
+        rows = max(len(visible_inputs) + len(self.outputs), 1)
         label_width = self._compute_label_width()
         field_width = self._compute_field_width()
         content_width = (
@@ -169,11 +171,21 @@ class UINode(QGraphicsRectItem):
             self.inputs,
             key=lambda port: port.core_port.spec.hideable,
         )
-        for index, port in enumerate(ordered_inputs):
+        visible_index = 0
+        for port in ordered_inputs:
+            is_visible = (
+                self._show_hideable_inputs
+                or not port.core_port.spec.hideable
+                or port.has_connection()
+            )
+            self._set_input_visibility(port, is_visible)
+            if not is_visible:
+                continue
+
             row_center_y = (
                 self._title_height
                 + self._body_top_gap
-                + (index * self._row_height)
+                + (visible_index * self._row_height)
                 + (self._row_height / 2)
             )
             port.setPos(0, row_center_y)
@@ -185,6 +197,7 @@ class UINode(QGraphicsRectItem):
                 self._field_height,
             )
             port.refresh_connections()
+            visible_index += 1
 
     def _layout_outputs(self, label_width: float, field_width: float) -> None:
         right_edge = self.rect().width()
@@ -192,7 +205,7 @@ class UINode(QGraphicsRectItem):
         value_x = self._content_margin + label_width + self._horizontal_gap
 
         for index, port in enumerate(self.outputs):
-            row_index = len(self.inputs) + index
+            row_index = len(self._visible_inputs()) + index
             row_center_y = (
                 self._title_height
                 + self._body_top_gap
@@ -219,6 +232,21 @@ class UINode(QGraphicsRectItem):
             row.sync()
         for row in self._output_rows.values():
             row.sync()
+
+    def _visible_inputs(self) -> list[UIPort]:
+        return [
+            port
+            for port in self.inputs
+            if self._show_hideable_inputs
+            or not port.core_port.spec.hideable
+            or port.has_connection()
+        ]
+
+    def _set_input_visibility(self, port: UIPort, visible: bool) -> None:
+        row = self._input_rows[port]
+        port.setVisible(visible)
+        row.label_item.setVisible(visible)
+        row.proxy.setVisible(visible)
 
     # === Port management ===
     def add_port(self, kind: str, core_port: CorePort) -> UIPort:
@@ -295,12 +323,18 @@ class UINode(QGraphicsRectItem):
         return super().itemChange(change, value)
 
     def hoverEnterEvent(self, event):
+        self._show_hideable_inputs = True
+        self.layout_ports()
         for button in self.get_all_buttons():
             button.setVisible(True)
+        super().hoverEnterEvent(event)
 
     def hoverLeaveEvent(self, event):
+        self._show_hideable_inputs = False
+        self.layout_ports()
         for button in self.get_all_buttons():
             button.setVisible(False)
+        super().hoverLeaveEvent(event)
 
     # === Helpers ===
     def change_label(self, label: str):
