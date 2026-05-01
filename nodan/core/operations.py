@@ -154,7 +154,8 @@ class PlotXY(Operation):
 
     input_spec = [
         PortSpec("x", "table"),
-        # PortSpec("spec", "text", editable=True, default=None),
+        PortSpec("xlabel", "text", editable=True, hideable=True),
+        PortSpec("ylabel", "text", editable=True, hideable=True),
   ]
 
     repeated_inputs = RepeatedInputSpec(
