@@ -97,6 +97,29 @@ def is_dataframe(value: Any) -> bool:
 DataFrame = PortType(name="dataframe", check=is_dataframe)
 
 
+# === Series type ===
+def is_series(value: Any) -> bool:
+    return isinstance(value, (pd.Series, np.ndarray, list, tuple))
+
+
+def coerce_series(value: Any) -> pd.Series:
+    if isinstance(value, pd.Series):
+        return value
+
+    if isinstance(value, pd.DataFrame):
+        if value.shape[1] != 1:
+            raise TypeError("Cannot convert multi-column dataframe to series")
+        return value.iloc[:, 0]
+
+    if isinstance(value, (np.ndarray, list, tuple)):
+        return pd.Series(value)
+
+    raise TypeError(f"Cannot convert {type(value).__name__} to series")
+
+
+Series = PortType(name="series", check=is_series, parents=("table",), coerce=coerce_series)
+
+
 # === Text type ===
 def is_text(value: Any) -> bool:
     return isinstance(value, str)
@@ -130,6 +153,7 @@ Number = PortType(
 Table = PortType(name="table", check=is_table, parents=("data",), coerce=coerce_table)
 Array = PortType(name="array", check=is_table, parents=("table",), coerce=coerce_table)
 DataFrame = PortType(name="dataframe", check=is_dataframe, parents=("table",))
+Series = PortType(name="series", check=is_series, parents=("table",), coerce=coerce_series)
 Text = PortType(name="text", check=is_text, parents=("data",), coerce=None)
 Bool = PortType(
     name="bool", check=is_bool, parents=("data",), coerce=None, parser=parse_bool
@@ -145,6 +169,7 @@ PORT_TYPES: dict[str, PortType] = {
     "number": Number,
     "object": Object,
     "scalar": Number,
+    "series": Series,
     "string": Text,
     "table": Table,
     "text": Text,
