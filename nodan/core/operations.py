@@ -147,6 +147,72 @@ class FilterColumns(Operation):
         return {"result": filtered}
 
 
+class Find(Operation):
+    type_id = "logic.find"
+    title = "Find"
+    category = "Logic"
+
+    input_spec = [
+        PortSpec("condition", "text", editable=True),
+        PortSpec("series", "series"),
+    ]
+
+    output_spec = [
+        PortSpec("index", "data", hideable=True),
+        PortSpec("value", "data", hideable=True),
+    ]
+
+    def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        condition = inputs["condition"]
+        series = inputs["series"]
+
+        if series is None:
+            raise ValueError("Find requires a series input.")
+        if not isinstance(condition, str) or not condition.strip():
+            raise ValueError("Find requires a non-empty condition.")
+
+        values = self._to_series(series)
+        matched_index = []
+        matched_values = []
+
+        for idx, val in values.items():
+            if self._matches(condition, idx, val):
+                matched_index.append(idx)
+                matched_values.append(val)
+
+        return {
+            "index": pd.Series(matched_index),
+            "value": pd.Series(matched_values, index=matched_index),
+        }
+
+    # TODO: Replace _to_series() with type coercion by the Executor
+    def _to_series(self, value: Any) -> pd.Series:
+        if isinstance(value, pd.Series):
+            return value
+
+        if isinstance(value, pd.DataFrame):
+            if value.shape[1] != 1:
+                raise ValueError("Find expects a series or a single-column dataframe.")
+            return value.iloc[:, 0]
+
+        return pd.Series(value)
+
+    def _matches(self, condition: str, idx: Any, val: Any) -> bool:
+        scope = {"idx": idx, "val": val}
+        safe_globals = {"__builtins__": {}}
+
+        try:
+            result = eval(condition, safe_globals, scope)
+        except Exception as exc:
+            raise ValueError(f"Invalid find condition '{condition}': {exc}") from exc
+
+        if not isinstance(result, bool):
+            raise ValueError(
+                "Find condition must evaluate to a boolean value for each item."
+            )
+
+        return result
+
 class PlotXY(Operation):
     type_id = "plot.xy"
     title = "Plot XY"
@@ -158,7 +224,9 @@ class PlotXY(Operation):
         PortSpec("ylabel", "text", editable=True, hideable=True),
         PortSpec("xlim", "text", editable=True, hideable=True),
         PortSpec("ylim", "text", editable=True, hideable=True),
+        PortSpec("legend", "text", editable=True, hideable=True),
         PortSpec("stylesheet", "text", editable=True, hideable=True),
+        PortSpec("legend_title", "text", editable=True, hideable=True),
   ]
 
     repeated_inputs = RepeatedInputSpec(
@@ -169,6 +237,13 @@ class PlotXY(Operation):
 
     def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         x = inputs["x"]
+        xlabel = inputs["xlabel"]
+        ylabel = inputs["ylabel"]
+        xlim = inputs["xlim"]
+        ylim = inputs["ylim"]
+        legend = inputs["legend"]
+        legend_title = inputs["legend_title"]
+
         ys = [
             value
             for name, value in sorted(
@@ -199,11 +274,21 @@ class PlotXY(Operation):
                 ax.plot(x_values, y_values, label=label)
                 overlay_count += 1
 
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
+        if xlabel:
+            ax.set_xlabel(xlabel)
+
+        if ylabel:
+            ax.set_ylabel(ylabel)
+
+        if xlim:
+            ax.set_xlim(xlim)
+
+        if ylim:
+            ax.set_ylim(ylim)
 
         if overlay_count > 1:
-            ax.legend()
+            if legend:
+                ax.legend(legend, title=legend_title)
 
         fig.tight_layout()
         plt.show()
