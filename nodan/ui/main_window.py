@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QFileDialog, QMainWindow
 from nodan.coordinator.coordinator import Coordinator
 from nodan.ui.canvas import Canvas
 
+# TODO: Add tabs
 
 class MainWindow(QMainWindow):
     def __init__(self):

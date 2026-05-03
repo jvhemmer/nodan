@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from nodan.core.node_system import CoreNode, CorePort
     from nodan.ui.canvas import Canvas
 
+# TODO: Fix "Add port" logic so different types of ports can be added/removed
 
 class UINode(QGraphicsRectItem):
     def __init__(
@@ -281,6 +282,18 @@ class UINode(QGraphicsRectItem):
         port.setOpacity(opacity)
         row.label_item.setOpacity(opacity)
         row.proxy.setOpacity(opacity)
+
+    def supports_repeated_inputs(self) -> bool:
+        return self.core_node.definition.repeated_inputs is not None
+
+    def is_repeated_input(self, port: UIPort) -> bool:
+        repeated = self.core_node.definition.repeated_inputs
+        if repeated is None or port.kind != "input":
+            return False
+
+        fixed_input_count = len(self.core_node.definition.input_spec)
+        repeated_inputs = self.core_node.inputs[fixed_input_count:]
+        return port.core_port in repeated_inputs
 
     # === Port management ===
     def add_port(self, kind: str, core_port: CorePort) -> UIPort:

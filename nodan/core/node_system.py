@@ -28,15 +28,9 @@ class PortSpec:
 
 
 @dataclass
-class RepeatedInputSpec:
-    base_name: str
-    data_type: PortTypeRef
+class RepeatedInputSpec(PortSpec):
     min_count: int = 2
     default_count: int = 2
-    editable: bool = False
-
-    def data_types(self) -> tuple[str, ...]:
-        return normalize_data_types(self.data_type)
 
 
 @dataclass(frozen=True)
@@ -75,7 +69,7 @@ class Operation:
             for i in range(count):
                 ports.append(
                     PortSpec(
-                        f"{self.repeated_inputs.base_name}{i + 1}",
+                        f"{self.repeated_inputs.name}{i + 1}",
                         self.repeated_inputs.data_type,
                         editable=self.repeated_inputs.editable,
                     )

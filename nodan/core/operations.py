@@ -7,6 +7,8 @@ from PySide6.QtWidgets import QFileDialog
 
 from nodan.core.node_system import Operation, PortSpec, RepeatedInputSpec
 
+# TODO: Derivative, Integration, Smoothing
+
 
 class ConstantValue(Operation):
     type_id = "value.constant"
@@ -38,7 +40,7 @@ class ElementWiseOperation(Operation):
     input_spec = []
 
     repeated_inputs = RepeatedInputSpec(
-        base_name="dataframe",
+        name="dataframe",
         data_type="dataframe",
         min_count=2,
         default_count=2,
@@ -69,7 +71,7 @@ class MultiplyValue(Operation):
     input_spec = [PortSpec("value", "data")]
 
     repeated_inputs = RepeatedInputSpec(
-        base_name="value",
+        name="value",
         data_type="number",
         min_count=1,
         default_count=1,
@@ -126,7 +128,7 @@ class FilterColumns(Operation):
     input_spec = [PortSpec("dataframe", "dataframe")]
 
     repeated_inputs = RepeatedInputSpec(
-        base_name="column",
+        name="column",
         data_type=["number", "text"],
         min_count=1,
         default_count=1,
@@ -230,7 +232,7 @@ class PlotXY(Operation):
   ]
 
     repeated_inputs = RepeatedInputSpec(
-        base_name="y", data_type="table", min_count=1, default_count=1, editable=True
+        name="y", data_type="table", min_count=1, default_count=1, editable=True
     )
 
     output_spec = []
@@ -329,7 +331,7 @@ class RawCode(Operation):
     input_spec = [PortSpec("code", "text", editable=True)]
 
     repeated_inputs = RepeatedInputSpec(
-        base_name="var", data_type="data", min_count=1, default_count=1, editable=True
+        name="var", data_type="data", min_count=1, default_count=1, editable=True
     )
 
     output_spec = []

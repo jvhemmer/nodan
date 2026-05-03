@@ -5,9 +5,10 @@ from nodan.ui.port import UIPort
 from nodan.core.node_system import format_data_type
 from nodan.ui.text_edit_window import TextEditWindow
 
-ACTIONS_COLUMN_WIDTH = 120
+ACTIONS_COLUMN_WIDTH = 180
 
 class PortEditRow(QWidget):
+    add_requested = Signal(object)
     remove_requested = Signal(object)
     value_changed = Signal(object, str)
     name_changed = Signal(object, str)
@@ -26,6 +27,7 @@ class PortEditRow(QWidget):
         self.type_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
         value_text = "" if port.core_port.value is None else str(port.core_port.value)
         self.value_edit = QLineEdit(value_text)
+        self.add_button = QPushButton("Add")
         self.edit_button = QPushButton("Edit")
         self.remove_button = QPushButton("Remove")
         self.actions_widget = QWidget(self)
@@ -33,27 +35,28 @@ class PortEditRow(QWidget):
         self.actions_layout.setContentsMargins(0, 0, 0, 0)
         self.actions_layout.setSpacing(4)
 
+        self.actions_layout.addWidget(self.add_button)
         self.actions_layout.addWidget(self.edit_button)
-
-        self.edit_button.setVisible(port.kind == "input" and port.is_editable())
 
         layout.addWidget(self.name_edit, 2)
         layout.addWidget(self.type_value, 2)
         layout.addWidget(self.value_edit, 2)
-        repeated = port.ui_node.core_node.definition.repeated_inputs
-        is_repeated_input = (
-            repeated is not None
-            and port.kind == "input"
-            and port.core_port in port.ui_node.core_node.inputs[repeated.min_count :]
-        )
-        if is_repeated_input:
-            self.actions_layout.addWidget(self.remove_button)
+        self.actions_layout.addWidget(self.remove_button)
 
         self.actions_widget.setFixedWidth(ACTIONS_COLUMN_WIDTH)
         layout.addWidget(self.actions_widget)
 
+        can_add = port.ui_node.is_repeated_input(port)
+        can_edit = port.kind == "input" and port.is_editable()
+        can_remove = port.ui_node.is_repeated_input(port)
+
+        self.add_button.setVisible(can_add)
+        self.edit_button.setVisible(can_edit)
+        self.remove_button.setVisible(can_remove)
+
         self.name_edit.editingFinished.connect(self.on_name_changed)
         self.value_edit.editingFinished.connect(self.on_value_changed)
+        self.add_button.clicked.connect(self.on_add_clicked)
         self.edit_button.clicked.connect(self.on_edit_clicked)
         self.remove_button.clicked.connect(self.on_remove_clicked)
 
@@ -70,6 +73,9 @@ class PortEditRow(QWidget):
     def on_name_changed(self):
         self.name_changed.emit(self.port, self.name_edit.text())
         self.name_edit.clearFocus()
+
+    def on_add_clicked(self):
+        self.add_requested.emit(self.port)
 
     def on_edit_clicked(self):
         w = TextEditWindow(self.value_edit.text())

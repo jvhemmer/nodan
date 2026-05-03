@@ -295,7 +295,7 @@ class Coordinator:
             node_id=node.id,
             kind="input",
             spec=PortSpec(
-                name=f"{repeated.base_name}{next_count}",
+                name=f"{repeated.name}{next_count}",
                 data_type=repeated.data_type,
                 editable=repeated.editable,
             ),
@@ -324,8 +324,12 @@ class Coordinator:
 
         node = port.ui_node.core_node
         core_port = port.core_port
-        repeated_ports = node.inputs[repeated.min_count :]
+        fixed_input_count = len(node.definition.input_spec)
+        repeated_ports = node.inputs[fixed_input_count:]
         if core_port not in repeated_ports:
+            return
+
+        if len(repeated_ports) <= repeated.min_count:
             return
 
         node.inputs.remove(core_port)

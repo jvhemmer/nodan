@@ -51,19 +51,14 @@ class NodeEditWindow(QWidget):
         self.output_box = QGroupBox("Outputs")
         self.output_layout = QVBoxLayout(self.output_box)
 
-        self.add_input_button = QPushButton("Add Input")
         self.add_output_button = QPushButton("Add Output")
-
         self.evaluate_button = QPushButton("Evaluate node")
 
         self.layout.addWidget(self.meta_box)
         self.layout.addWidget(self.input_box)
-        if node.core_node.definition.repeated_inputs:
-            self.layout.addWidget(self.add_input_button)
         self.layout.addWidget(self.output_box)
         self.layout.addWidget(self.evaluate_button)
 
-        self.add_input_button.clicked.connect(self.add_input)
         self.name_edit.editingFinished.connect(self.on_name_edit_changed)
         self.evaluate_button.clicked.connect(self.request_evaluation)
 
@@ -130,16 +125,10 @@ class NodeEditWindow(QWidget):
         if port.is_editable() and not port.has_connection():
             row.set_value_editable(True)
 
-        repeated = self.node.core_node.definition.repeated_inputs
-        is_repeated_input = (
-            port.kind == "input"
-            and repeated is not None
-            and port.core_port in self.node.core_node.inputs
-            and port.core_port not in self.node.core_node.inputs[: repeated.min_count]
-        )
-        if is_repeated_input:
+        if self.node.is_repeated_input(port):
             row.set_name_editable(True)
 
+        row.add_requested.connect(self.add_input_from_port)
         row.remove_requested.connect(self.remove_port)
         row.name_changed.connect(self.on_port_name_changed)
         self.rows[port] = row
@@ -162,7 +151,15 @@ class NodeEditWindow(QWidget):
         self.add_input_requested.emit(self.node.core_node)
         self.rebuild_rows()
 
+    def add_input_from_port(self, port: UIPort):
+        if port.kind != "input" or not self.node.supports_repeated_inputs():
+            return
+
+        self.add_input()
+
     def remove_port(self, port):
+        if not self.node.is_repeated_input(port):
+            return
         self.canvas.coordinator.remove_repeated_input(port)
         self.rebuild_rows()
 
