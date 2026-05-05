@@ -271,8 +271,6 @@ class Coordinator:
         specs = getattr(definition, "params", [])
         return {spec.name: spec.default for spec in specs}
 
-
-
     def set_port_value(self, port: UIPort, raw_value: str) -> None:
         core_port = port.core_port
 
@@ -342,14 +340,14 @@ class Coordinator:
     # === Save/load and (de)serialization ===
     def save_to_file(self, path: str) -> None:
         with open(path, "w", encoding="utf-8") as file:
-            json.dump(self.serialize_graph(), file, indent=2)
+            json.dump(self.serialize_graph(self.graph), file, indent=2)
 
     def load_from_file(self, path: str) -> None:
         with open(path, "r", encoding="utf-8") as file:
             data = json.load(file)
         self.load_graph(data)
 
-    def serialize_graph(self) -> dict[str, Any]:
+    def serialize_graph(self, graph: Graph) -> dict[str, Any]:
         return {
             "nodes": [
                 self._serialize_node(binding.core_node)

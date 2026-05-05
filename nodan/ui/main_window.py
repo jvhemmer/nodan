@@ -1,6 +1,7 @@
-from PySide6.QtWidgets import QFileDialog, QMainWindow
+from PySide6.QtWidgets import QFileDialog, QMainWindow, QTabWidget
 
 from nodan.coordinator.coordinator import Coordinator
+from nodan.core.editor_tab import EditorTab
 from nodan.ui.canvas import Canvas
 from nodan.ui.node import UINode
 from nodan.ui.subgraph_editor import SubgraphEditor
@@ -15,15 +16,11 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("NoDAn")
         self.resize(1400, 860)
 
-        self.canvas = Canvas()
-        self.coordinator = Coordinator(self.canvas)
-        self.canvas.coordinator = self.coordinator
-        self._current_file_path: str | None = None
+        self.tabs = QTabWidget()
+        self.setCentralWidget(self.tabs)
 
-        self.subgraph_editor: SubgraphEditor | None = None
-
+        self.new_tab()
         self._build_menu_bar()
-        self.setCentralWidget(self.canvas)
 
     def _build_menu_bar(self) -> None:
         menu_bar = self.menuBar()
@@ -51,54 +48,36 @@ class MainWindow(QMainWindow):
 
     # === File Menu actions ===
     def _new_file(self) -> None:
-        self.coordinator.clear()
-        self._current_file_path = None
+        tab = self.current_tab()
+        if not tab:
+            return
+        tab.new_file()
 
     def _open_file(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Open Graph",
-            "",
-            "NoDAn Graph (*.json);;JSON Files (*.json);;All Files (*)",
-        )
-        if not path:
+        tab = self.current_tab()
+        if not tab:
             return
 
-        self.coordinator.load_from_file(path)
-        self._current_file_path = path
+        tab.load_file()
 
     def _save_file(self) -> None:
-        if self._current_file_path is None:
-            self._save_file_as()
+        tab = self.current_tab()
+        if not tab:
             return
-
-        self.coordinator.save_to_file(self._current_file_path)
+        tab.save_file()
 
     def _save_file_as(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Save Graph",
-            "",
-            "NoDAn Graph (*.json);;JSON Files (*.json);;All Files (*)",
-        )
-        if not path:
+        tab = self.current_tab()
+        if not tab:
             return
+        tab.save_file_as()
 
-        self.coordinator.save_to_file(path)
-        self._current_file_path = path
+    # === Tabs ===
+    def current_tab(self) -> EditorTab | None:
+        widget = self.tabs.currentWidget()
+        return widget if isinstance(widget, EditorTab) else None
 
-    # === Subgraph actions ===
-    def new_subgraph_from_selection(self):
-        selection = self.canvas.scene().selectedItems()
-        if not selection:
-            return
-
-        nodes = [
-            item for item in selection
-            if isinstance(item, UINode)
-        ]
-
-        draft = self.canvas.coordinator.build_subgraph_definition(nodes, subgraph_id="new_subgraph", title="New Subgraph")
-
-        self.subgraph_editor = SubgraphEditor(draft)
-        self.subgraph_editor.show()
+    def new_tab(self) -> None:
+        tab = EditorTab()
+        self.tabs.addTab(tab, "Untitled")
+        self.tabs.setCurrentWidget(tab)
