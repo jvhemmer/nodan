@@ -1,0 +1,17 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from nodan.core.node_system import CoreNode
+from nodan.core.subgraph import SubgraphDefinition
+
+if TYPE_CHECKING:
+    from nodan.coordinator.coordinator import Coordinator
+
+from PySide6.QtWidgets import QWidget
+
+
+class SubgraphEditor(QWidget):
+    def __init__(self, subgraph: SubgraphDefinition):
+        super().__init__()
+
+

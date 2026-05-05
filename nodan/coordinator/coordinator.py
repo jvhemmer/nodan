@@ -7,13 +7,19 @@ from uuid import uuid4
 from PySide6.QtCore import QPointF
 
 from nodan.core.graph import Executor, Graph
-from nodan.core.node_system import CoreNode, CorePort, PortSpec
+from nodan.core.node_system import CoreConnection, CoreNode, CorePort, PortSpec
 from nodan.core.operations import Operation
+from nodan.core.subgraph import (
+    SubgraphDefinition,
+    register_subgraph_operation,
+    unregister_subgraph_operation,
+)
 from nodan.core.type_parser import PortValueParser
 from nodan.ui.canvas import Canvas
 from nodan.ui.connection import UIConnection
 from nodan.ui.node import UINode
 from nodan.ui.port import UIPort
+from nodan.ui.subgraph_editor import SubgraphEditor
 
 
 @dataclass
@@ -170,104 +176,18 @@ class Coordinator:
         self.canvas.remove_node(binding.ui_node)
 
     def clear(self) -> None:
+        for subgraph_id in list(self.graph.subgraphs.keys()):
+            unregister_subgraph_operation(subgraph_id)
+
         for node_id in list(self.node_bindings.keys()):
             self.remove_node(node_id)
         self.graph.connections.clear()
         self.graph.nodes.clear()
+        self.graph.subgraphs.clear()
         self.executor.cache.clear()
         self.canvas.clear_pending_connection()
 
-    def save_to_file(self, path: str) -> None:
-        with open(path, "w", encoding="utf-8") as file:
-            json.dump(self.serialize_graph(), file, indent=2)
 
-    def load_from_file(self, path: str) -> None:
-        with open(path, "r", encoding="utf-8") as file:
-            data = json.load(file)
-        self.load_graph(data)
-
-    def serialize_graph(self) -> dict[str, Any]:
-        nodes: list[dict[str, Any]] = []
-        for node_id, binding in self.node_bindings.items():
-            core_node = binding.core_node
-            ui_node = binding.ui_node
-            local_input_values = {
-                port.spec.name: self._serialize_value(port.value)
-                for port in core_node.inputs
-                if port.spec.editable
-                and not self._input_already_connected(core_node.id, port.spec.name)
-            }
-            nodes.append(
-                {
-                    "id": node_id,
-                    "type_id": core_node.definition.type_id,
-                    "name": ui_node.name,
-                    "x": ui_node.pos().x(),
-                    "y": ui_node.pos().y(),
-                    "state": core_node.state,
-                    "params": core_node.params,
-                    "input_values": local_input_values,
-                }
-            )
-
-        connections = [
-            {
-                "source_node_id": connection.source_node_id,
-                "source_port": connection.source_port,
-                "target_node_id": connection.target_node_id,
-                "target_port": connection.target_port,
-            }
-            for connection in self.graph.connections
-        ]
-
-        return {
-            "nodes": nodes,
-            "connections": connections,
-        }
-
-    def load_graph(self, data: dict[str, Any]) -> None:
-        self.clear()
-
-        for node_data in data.get("nodes", []):
-            node = self._create_node(
-                node_data["type_id"],
-                QPointF(node_data.get("x", 0), node_data.get("y", 0)),
-                node_id=node_data["id"],
-                state=node_data.get("state", {}),
-                params=node_data.get("params", {}),
-                ui_name=node_data.get("name"),
-            )
-
-            input_values = node_data.get("input_values", {})
-            for port_name, value in input_values.items():
-                port = node.get_input_port(port_name)
-                if port is not None:
-                    if isinstance(value, str):
-                        port.value = self.value_parser.parse(port.spec.data_type, value)
-                    else:
-                        port.value = value
-
-            binding = self.node_bindings[node.id]
-            binding.ui_node.sync_port_widgets()
-
-        for connection_data in data.get("connections", []):
-            source_binding = self.node_bindings.get(connection_data["source_node_id"])
-            target_binding = self.node_bindings.get(connection_data["target_node_id"])
-            if source_binding is None or target_binding is None:
-                continue
-
-            source_port = self._find_ui_port(
-                source_binding.ui_node.outputs, connection_data["source_port"]
-            )
-            target_port = self._find_ui_port(
-                target_binding.ui_node.inputs, connection_data["target_port"]
-            )
-            if source_port is None or target_port is None:
-                continue
-
-            self.connect_ports(source_port, target_port)
-
-        self._refresh_all_nodes()
 
     def update_node_param(self, node_id: str, name: str, value) -> None:
         node = self.graph.nodes[node_id]
@@ -336,11 +256,6 @@ class Coordinator:
         self.executor.cache.clear()
         port.ui_node.remove_port(port)
 
-    def handle_port_clicked(self, port: UIPort) -> None:
-        # optional: if you keep pending-drag state in Canvas, Canvas can call
-        # coordinator.connect_ports(...) once it has source+target.
-        pass
-
     def _build_ui_node(self, node: CoreNode, pos: QPointF) -> UINode:
         ui_node = UINode(
             self.canvas, node, pos.x(), pos.y(), name=node.definition.title
@@ -366,6 +281,8 @@ class Coordinator:
     def _default_params(self, definition: Operation) -> dict:
         specs = getattr(definition, "params", [])
         return {spec.name: spec.default for spec in specs}
+
+
 
     def set_port_value(self, port: UIPort, raw_value: str) -> None:
         core_port = port.core_port
@@ -430,6 +347,199 @@ class Coordinator:
             if port.core_port.spec.name == port_name:
                 return port
         return None
+
+    # === Subgraphs ===
+    def build_subgraph_definition(self, ui_nodes: list[UINode], *, subgraph_id: str, title: str) -> SubgraphDefinition:
+        selected_nodes = [node.core_node for node in ui_nodes]
+        selected_node_ids = {node.id for node in selected_nodes}
+
+        internal_connections = []
+        inbound_connections = []
+        outbound_connections = []
+
+        for connection in self.graph.connections:
+            source = connection.source_node_id in selected_node_ids
+            target = connection.target_node_id in selected_node_ids
+
+            if source and target:
+                internal_connections.append(connection)
+            elif target and not source:
+                outbound_connections.append(connection)
+            elif source and not target:
+                inbound_connections.append(connection)
+
+        return SubgraphDefinition(
+            id=subgraph_id,
+            title=title,
+            input_spec=[],
+            output_spec=[],
+            graph_data={
+                "nodes": [self._serialize_node(node) for node in selected_nodes],
+                "connections": [
+                    self._serialize_connection(connection)
+                    for connection in internal_connections
+                ],
+                "inbound_connections": [
+                    self._serialize_connection(connection)
+                    for connection in inbound_connections
+                ],
+                "outbound_connections": [
+                    self._serialize_connection(connection)
+                    for connection in outbound_connections
+                ],
+            },
+        )
+
+
+
+    # === Save/load and (de)serialization ===
+    def save_to_file(self, path: str) -> None:
+        with open(path, "w", encoding="utf-8") as file:
+            json.dump(self.serialize_graph(), file, indent=2)
+
+    def load_from_file(self, path: str) -> None:
+        with open(path, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        self.load_graph(data)
+
+    def serialize_graph(self) -> dict[str, Any]:
+        return {
+            "subgraphs": [
+                self._serialize_subgraph(subgraph)
+                for subgraph in self.graph.subgraphs.values()
+            ],
+            "nodes": [
+                self._serialize_node(binding.core_node)
+                for binding in self.node_bindings.values()
+            ],
+            "connections": [
+                self._serialize_connection(connection)
+                for connection in self.graph.connections
+            ],
+        }
+
+    def load_graph(self, data: dict[str, Any]) -> None:
+        self.clear()
+
+        for subgraph_data in data.get("subgraphs", []):
+            subgraph = self._deserialize_subgraph(subgraph_data)
+            self.graph.subgraphs[subgraph.id] = subgraph
+            register_subgraph_operation(subgraph)
+
+        for node_data in data.get("nodes", []):
+            node = self._create_node(
+                node_data["type_id"],
+                QPointF(node_data.get("x", 0), node_data.get("y", 0)),
+                node_id=node_data["id"],
+                state=node_data.get("state", {}),
+                params=node_data.get("params", {}),
+                ui_name=node_data.get("name"),
+            )
+
+            input_values = node_data.get("input_values", {})
+            for port_name, value in input_values.items():
+                port = node.get_input_port(port_name)
+                if port is not None:
+                    if isinstance(value, str):
+                        port.value = self.value_parser.parse(port.spec.data_type, value)
+                    else:
+                        port.value = value
+
+            binding = self.node_bindings[node.id]
+            binding.ui_node.sync_port_widgets()
+
+        for connection_data in data.get("connections", []):
+            source_binding = self.node_bindings.get(connection_data["source_node_id"])
+            target_binding = self.node_bindings.get(connection_data["target_node_id"])
+            if source_binding is None or target_binding is None:
+                continue
+
+            source_port = self._find_ui_port(
+                source_binding.ui_node.outputs, connection_data["source_port"]
+            )
+            target_port = self._find_ui_port(
+                target_binding.ui_node.inputs, connection_data["target_port"]
+            )
+            if source_port is None or target_port is None:
+                continue
+
+            self.connect_ports(source_port, target_port)
+
+        self._refresh_all_nodes()
+
+    def _serialize_port_spec(self, port: PortSpec) -> dict[str, Any]:
+        return {
+            "name": port.name,
+            "data_type": port.data_type,
+            "default": self._serialize_value(port.default),
+            "editable": port.editable,
+            "hideable": port.hideable,
+        }
+
+    def _serialize_node(self, node: CoreNode) -> dict[str, Any]:
+        binding = self.node_bindings[node.id]
+        ui_node = binding.ui_node
+        local_input_values = {
+            port.spec.name: self._serialize_value(port.value)
+            for port in node.inputs
+            if port.spec.editable
+            and not self._input_already_connected(node.id, port.spec.name)
+        }
+
+        return {
+            "id": node.id,
+            "type_id": node.definition.type_id,
+            "name": ui_node.name,
+            "x": ui_node.pos().x(),
+            "y": ui_node.pos().y(),
+            "state": node.state,
+            "params": node.params,
+            "input_values": local_input_values,
+        }
+
+    def _serialize_connection(self, connection: CoreConnection) -> dict[str, Any]:
+        return {
+            "source_node_id": connection.source_node_id,
+            "source_port": connection.source_port,
+            "target_node_id": connection.target_node_id,
+            "target_port": connection.target_port,
+        }
+
+    def _serialize_subgraph(self, subgraph: SubgraphDefinition) -> dict[str, Any]:
+        return {
+            "id": subgraph.id,
+            "title": subgraph.title,
+            "input_spec": [
+                self._serialize_port_spec(port) for port in subgraph.input_spec
+            ],
+            "output_spec": [
+                self._serialize_port_spec(port) for port in subgraph.output_spec
+            ],
+            "graph": self._serialize_value(subgraph.graph_data),
+        }
+    def _deserialize_subgraph(self, data: dict[str, Any]) -> SubgraphDefinition:
+        return SubgraphDefinition(
+            id=data["id"],
+            title=data["title"],
+            input_spec=[
+                self._deserialize_port_spec(port_data)
+                for port_data in data.get("input_spec", [])
+            ],
+            output_spec=[
+                self._deserialize_port_spec(port_data)
+                for port_data in data.get("output_spec", [])
+            ],
+            graph_data=data.get("graph", {}),
+        )
+
+    def _deserialize_port_spec(self, data: dict[str, Any]) -> PortSpec:
+        return PortSpec(
+            name=data["name"],
+            data_type=data["data_type"],
+            default=data.get("default"),
+            editable=data.get("editable", False),
+            hideable=data.get("hideable", False),
+        )
 
     def _serialize_value(self, value: Any) -> Any:
         if value is None or isinstance(value, (str, int, float, bool)):

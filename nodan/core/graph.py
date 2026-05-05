@@ -1,12 +1,14 @@
 from typing import Any
 
 from nodan.core.node_system import CoreConnection, CoreNode
+from nodan.core.subgraph import SubgraphDefinition
 
 
 class Graph:
     def __init__(self):
         self.nodes: dict[str, CoreNode] = {}
         self.connections: list[CoreConnection] = []
+        self.subgraphs: dict[str, SubgraphDefinition] = {}
 
     def add_node(self, node: CoreNode):
         self.nodes[node.id] = node
