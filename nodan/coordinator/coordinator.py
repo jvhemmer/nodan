@@ -9,17 +9,12 @@ from PySide6.QtCore import QPointF
 from nodan.core.graph import Executor, Graph
 from nodan.core.node_system import CoreConnection, CoreNode, CorePort, PortSpec
 from nodan.core.operations import Operation
-from nodan.core.subgraph import (
-    SubgraphDefinition,
-    register_subgraph_operation,
-    unregister_subgraph_operation,
-)
+
 from nodan.core.type_parser import PortValueParser
 from nodan.ui.canvas import Canvas
 from nodan.ui.connection import UIConnection
 from nodan.ui.node import UINode
 from nodan.ui.port import UIPort
-from nodan.ui.subgraph_editor import SubgraphEditor
 
 
 @dataclass
@@ -176,18 +171,12 @@ class Coordinator:
         self.canvas.remove_node(binding.ui_node)
 
     def clear(self) -> None:
-        for subgraph_id in list(self.graph.subgraphs.keys()):
-            unregister_subgraph_operation(subgraph_id)
-
         for node_id in list(self.node_bindings.keys()):
             self.remove_node(node_id)
         self.graph.connections.clear()
         self.graph.nodes.clear()
-        self.graph.subgraphs.clear()
         self.executor.cache.clear()
         self.canvas.clear_pending_connection()
-
-
 
     def update_node_param(self, node_id: str, name: str, value) -> None:
         node = self.graph.nodes[node_id]
@@ -349,48 +338,6 @@ class Coordinator:
         return None
 
     # === Subgraphs ===
-    def build_subgraph_definition(self, ui_nodes: list[UINode], *, subgraph_id: str, title: str) -> SubgraphDefinition:
-        selected_nodes = [node.core_node for node in ui_nodes]
-        selected_node_ids = {node.id for node in selected_nodes}
-
-        internal_connections = []
-        inbound_connections = []
-        outbound_connections = []
-
-        for connection in self.graph.connections:
-            source = connection.source_node_id in selected_node_ids
-            target = connection.target_node_id in selected_node_ids
-
-            if source and target:
-                internal_connections.append(connection)
-            elif target and not source:
-                outbound_connections.append(connection)
-            elif source and not target:
-                inbound_connections.append(connection)
-
-        return SubgraphDefinition(
-            id=subgraph_id,
-            title=title,
-            input_spec=[],
-            output_spec=[],
-            graph_data={
-                "nodes": [self._serialize_node(node) for node in selected_nodes],
-                "connections": [
-                    self._serialize_connection(connection)
-                    for connection in internal_connections
-                ],
-                "inbound_connections": [
-                    self._serialize_connection(connection)
-                    for connection in inbound_connections
-                ],
-                "outbound_connections": [
-                    self._serialize_connection(connection)
-                    for connection in outbound_connections
-                ],
-            },
-        )
-
-
 
     # === Save/load and (de)serialization ===
     def save_to_file(self, path: str) -> None:
@@ -404,10 +351,6 @@ class Coordinator:
 
     def serialize_graph(self) -> dict[str, Any]:
         return {
-            "subgraphs": [
-                self._serialize_subgraph(subgraph)
-                for subgraph in self.graph.subgraphs.values()
-            ],
             "nodes": [
                 self._serialize_node(binding.core_node)
                 for binding in self.node_bindings.values()
@@ -420,11 +363,6 @@ class Coordinator:
 
     def load_graph(self, data: dict[str, Any]) -> None:
         self.clear()
-
-        for subgraph_data in data.get("subgraphs", []):
-            subgraph = self._deserialize_subgraph(subgraph_data)
-            self.graph.subgraphs[subgraph.id] = subgraph
-            register_subgraph_operation(subgraph)
 
         for node_data in data.get("nodes", []):
             node = self._create_node(
@@ -467,15 +405,6 @@ class Coordinator:
 
         self._refresh_all_nodes()
 
-    def _serialize_port_spec(self, port: PortSpec) -> dict[str, Any]:
-        return {
-            "name": port.name,
-            "data_type": port.data_type,
-            "default": self._serialize_value(port.default),
-            "editable": port.editable,
-            "hideable": port.hideable,
-        }
-
     def _serialize_node(self, node: CoreNode) -> dict[str, Any]:
         binding = self.node_bindings[node.id]
         ui_node = binding.ui_node
@@ -505,32 +434,14 @@ class Coordinator:
             "target_port": connection.target_port,
         }
 
-    def _serialize_subgraph(self, subgraph: SubgraphDefinition) -> dict[str, Any]:
+    def _serialize_port_spec(self, port: PortSpec) -> dict[str, Any]:
         return {
-            "id": subgraph.id,
-            "title": subgraph.title,
-            "input_spec": [
-                self._serialize_port_spec(port) for port in subgraph.input_spec
-            ],
-            "output_spec": [
-                self._serialize_port_spec(port) for port in subgraph.output_spec
-            ],
-            "graph": self._serialize_value(subgraph.graph_data),
+            "name": port.name,
+            "data_type": port.data_type,
+            "default": self._serialize_value(port.default),
+            "editable": port.editable,
+            "hideable": port.hideable,
         }
-    def _deserialize_subgraph(self, data: dict[str, Any]) -> SubgraphDefinition:
-        return SubgraphDefinition(
-            id=data["id"],
-            title=data["title"],
-            input_spec=[
-                self._deserialize_port_spec(port_data)
-                for port_data in data.get("input_spec", [])
-            ],
-            output_spec=[
-                self._deserialize_port_spec(port_data)
-                for port_data in data.get("output_spec", [])
-            ],
-            graph_data=data.get("graph", {}),
-        )
 
     def _deserialize_port_spec(self, data: dict[str, Any]) -> PortSpec:
         return PortSpec(
