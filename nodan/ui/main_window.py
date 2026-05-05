@@ -1,4 +1,6 @@
-from PySide6.QtWidgets import QFileDialog, QMainWindow, QTabWidget
+from PySide6.QtCore import Qt
+from PySide6.QtGui import Qt
+from PySide6.QtWidgets import QFileDialog, QMainWindow, QTabWidget, QWidget, QApplication, QPushButton
 
 from nodan.coordinator.coordinator import Coordinator
 from nodan.core.editor_tab import EditorTab
@@ -13,13 +15,19 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self._pending_plus_open = False
+
         self.setWindowTitle("NoDAn")
         self.resize(1400, 860)
 
         self.tabs = QTabWidget()
+        self.tabs.tabBarClicked.connect(self.handle_tab_clicked)
+        self.tabs.currentChanged.connect(self.handle_tab_changed)
+        self.tabs.tabBarDoubleClicked.connect(self.handle_tab_doubleclicked)
         self.setCentralWidget(self.tabs)
 
-        self.new_tab()
+        self.add_editor_tab()
+        self.add_plus_tab()
         self._build_menu_bar()
 
     def _build_menu_bar(self) -> None:
@@ -77,7 +85,44 @@ class MainWindow(QMainWindow):
         widget = self.tabs.currentWidget()
         return widget if isinstance(widget, EditorTab) else None
 
-    def new_tab(self) -> None:
+    def add_editor_tab(self, name: str = "Untitled") -> None:
         tab = EditorTab()
-        self.tabs.addTab(tab, "Untitled")
+        plus_idx = self.tabs.count() - 1
+        self.tabs.insertTab(plus_idx, tab, name)
         self.tabs.setCurrentWidget(tab)
+
+    def add_plus_tab(self):
+        plus = QWidget()
+        self.tabs.addTab(plus, "+")
+
+    def handle_tab_clicked(self, index: int) -> None:
+        plus_index = self.tabs.count() - 1
+        self._pending_plus_open = index == plus_index
+
+    def handle_tab_doubleclicked(self, index: int) -> None:
+        plus_index = self.tabs.count() - 1
+
+        if index < 0 or index == plus_index:
+            return
+
+        self._pending_plus_open = False
+
+        self.tabs.setCurrentIndex(index-1)
+        widget = self.tabs.widget(index)
+        self.tabs.removeTab(index)
+        if widget is not None:
+            widget.deleteLater()
+
+    #TODO: Add a timer to prevent double click unintentionally deleting tabs after creating a new one
+    def handle_tab_changed(self, index: int) -> None:
+        plus_index = self.tabs.count() - 1
+
+        if not self._pending_plus_open:
+            return
+
+        if index != plus_index:
+            self._pending_plus_open = False
+            return
+
+        self._pending_plus_open = False
+        self.add_editor_tab()
