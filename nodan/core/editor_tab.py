@@ -19,7 +19,7 @@ class EditorTab(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.canvas)
 
-    # === File handling ===
+    #region FILE HANDLING
     def new_file(self) -> None:
         self.coordinator.clear()
         self.file_path = None
@@ -56,3 +56,18 @@ class EditorTab(QWidget):
 
         self.coordinator.load_from_file(path)
         self.file_path = path
+    #endregion
+
+    #region SUBGRAPHS
+    def get_selected_nodes(self):
+        selection = self.canvas.scene().selectedItems()
+        if not selection:
+            return
+
+        selected_nodes = [
+            item for item in selection
+            if isinstance(item, UINode)
+        ]
+
+        return selected_nodes
+    #endregion

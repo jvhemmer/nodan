@@ -2,14 +2,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import Qt
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QTabWidget, QWidget, QApplication, QPushButton
 
-from nodan.coordinator.coordinator import Coordinator
 from nodan.core.editor_tab import EditorTab
-from nodan.ui.canvas import Canvas
-from nodan.ui.node import UINode
-from nodan.ui.subgraph_editor import SubgraphEditor
 
-
-# TODO: Add tabs
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -50,11 +44,14 @@ class MainWindow(QMainWindow):
         # Subgraph menu
         subgraph_menu = menu_bar.addMenu("Subgraph")
 
-        self.subgraph_new_action = subgraph_menu.addAction("New from selection")
+        self.subgraph_new_action = subgraph_menu.addAction("New from selection...")
+        self.subgraph_new_from_file_action = subgraph_menu.addAction("New from file...")
         self.subgraph_add_action = subgraph_menu.addAction("Add...")
         #TODO: Show all loaded subgraphs as a submenu of "Add..."
 
-    # === File Menu actions ===
+        self.subgraph_new_from_file_action.triggered.connect()
+
+    ##region FILE MENU ACTIONS
     def _new_file(self) -> None:
         tab = self.current_tab()
         if not tab:
@@ -79,8 +76,9 @@ class MainWindow(QMainWindow):
         if not tab:
             return
         tab.save_file_as()
+    #endregion
 
-    # === Tabs ===
+    #region TABS
     def current_tab(self) -> EditorTab | None:
         widget = self.tabs.currentWidget()
         return widget if isinstance(widget, EditorTab) else None
@@ -126,3 +124,16 @@ class MainWindow(QMainWindow):
 
         self._pending_plus_open = False
         self.add_editor_tab()
+    #endregion
+
+    #region SUBGRAPHS
+    def new_subgraph_from_file(self) -> None:
+        tab = self.current_tab()
+
+    def new_subgraph_from_selection(self):
+        tab = self.current_tab()
+        if not tab:
+            return
+
+
+    #endregion
