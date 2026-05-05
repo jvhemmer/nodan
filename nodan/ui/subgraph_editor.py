@@ -14,4 +14,4 @@ class SubgraphEditor(QWidget):
     def __init__(self, subgraph: SubgraphDefinition):
         super().__init__()
 
-
+    #TODO: Show table with name and id of the subgraph and list of nodes.

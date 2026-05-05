@@ -47,6 +47,7 @@ class MainWindow(QMainWindow):
 
         self.subgraph_new_action = subgraph_menu.addAction("New from selection")
         self.subgraph_add_action = subgraph_menu.addAction("Add...")
+        #TODO: Show all loaded subgraphs as a submenu of "Add..."
 
     # === File Menu actions ===
     def _new_file(self) -> None:
