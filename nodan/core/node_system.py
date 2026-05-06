@@ -106,7 +106,6 @@ class CorePort:
 class CoreNode:
     id: str
     definition: Operation
-    params: dict[str, Any]
     state: dict[str, Any]
     inputs: list[CorePort]
     outputs: list[CorePort]

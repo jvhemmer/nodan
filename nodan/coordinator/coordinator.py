@@ -2,12 +2,13 @@ import json
 import keyword
 from dataclasses import dataclass
 from typing import Any
-from uuid import uuid4
+from uuid import uuid7
 
 from PySide6.QtCore import QPointF
 
+from nodan.core.document import NodeDocument, ConnectionDocument, GraphDocument
 from nodan.core.graph import Executor, Graph
-from nodan.core.node_system import CoreConnection, CoreNode, CorePort, PortSpec
+from nodan.core.node_system import CoreNode, CorePort, PortSpec
 from nodan.core.operations import Operation
 
 from nodan.core.type_parser import PortValueParser
@@ -18,10 +19,9 @@ from nodan.ui.port import UIPort
 
 
 @dataclass
-class UINodeBinding:
+class NodeBinding:
     core_node: CoreNode
     ui_node: UINode
-
 
 class Coordinator:
     def __init__(self, canvas: Canvas):
@@ -31,16 +31,27 @@ class Coordinator:
         self.executor = Executor(self.graph)
         self.value_parser = PortValueParser()
 
-        self.node_bindings: dict[str, UINodeBinding] = {}
+        self.node_bindings: dict[str, NodeBinding] = {}
         self.port_index: dict[UIPort, tuple[str, str, str]] = {}
 
         self._wire_canvas()
+
+    #region SELF
+    def clear(self) -> None:
+        for node_id in list(self.node_bindings.keys()):
+            self.remove_node(node_id)
+        self.graph.connections.clear()
+        self.graph.nodes.clear()
+        self.executor.cache.clear()
+        self.canvas.clear_pending_connection()
 
     def _wire_canvas(self) -> None:
         # self.canvas.port_clicked = self.handle_port_clicked
         # self.canvas.node_delete_requested = self.remove_node
         self.canvas.add_node_requested.connect(self.add_node_by_type)
+    #endregion
 
+    #region NODES
     def add_node_by_type(self, type_id: str, pos: QPointF) -> str:
         node = self._create_node(type_id, pos)
         return node.id
@@ -52,7 +63,6 @@ class Coordinator:
         *,
         node_id: str | None = None,
         state: dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None,
         ui_name: str | None = None,
     ) -> CoreNode:
         # Instantiate the definition
@@ -60,9 +70,8 @@ class Coordinator:
         definition = definition_cls()
 
         node = CoreNode(
-            id=node_id or str(uuid4()),
+            id=node_id or str(uuid7()),
             definition=definition,
-            params=params or self._default_params(definition),
             state=dict(state or {}),
             inputs=[],
             outputs=[],
@@ -73,8 +82,82 @@ class Coordinator:
         ui_node = self._build_ui_node(node, pos)
         if ui_name is not None:
             ui_node.change_label(ui_name)
-        self.node_bindings[node.id] = UINodeBinding(core_node=node, ui_node=ui_node)
+        self.node_bindings[node.id] = NodeBinding(core_node=node, ui_node=ui_node)
         return node
+
+    def remove_node(self, node_id: str) -> None:
+        binding = self.node_bindings.pop(node_id, None)
+        if binding is None:
+            return
+
+        self.graph.connections = [
+            c
+            for c in self.graph.connections
+            if c.source_node_id != node_id and c.target_node_id != node_id
+        ]
+        self.graph.nodes.pop(node_id, None)
+
+        for port in binding.ui_node.get_all_ports():
+            self.port_index.pop(port, None)
+
+        self.canvas.remove_node(binding.ui_node)
+
+    def evaluate_node(self, node: CoreNode) -> dict | None:
+        self.executor.cache.clear()
+        result = self.executor.evaluate_node(
+            node.id
+        )  # TODO: Change evaluate_node to use CoreNode instead of ID
+        self._refresh_all_nodes()
+        return result
+
+    def _build_ui_node(self, node: CoreNode, pos: QPointF, name: str | None = None) -> UINode:
+        ui_node = UINode(
+            self.canvas, node, pos.x(), pos.y(), name=node.definition.title
+        )
+        self.canvas.scene().addItem(ui_node)
+        self.canvas.nodes.append(ui_node)
+
+        for port in list(ui_node.inputs):
+            ui_node.remove_port(port)
+        for port in list(ui_node.outputs):
+            ui_node.remove_port(port)
+
+        for core_port in node.inputs:
+            port = ui_node.add_port("input", core_port)
+            port.name = core_port.spec.name
+
+        for core_port in node.outputs:
+            port = ui_node.add_port("output", core_port)
+            port.name = core_port.spec.name
+
+        if name: ui_node.change_label(name)
+
+        return ui_node
+
+    def _refresh_all_nodes(self) -> None:
+        for binding in self.node_bindings.values():
+            binding.ui_node.sync_port_widgets()
+    #endregion
+
+    #region PORTS AND CONNECTIONS
+    def connect_ports(self, source: UIPort, target: UIPort) -> None:
+        self._connect_core_ports(source, target)
+        self._connect_ui_ports(source, target)
+
+    def disconnect_ports(self, source: UIPort, target: UIPort) -> None:
+        self.graph.connections = [
+            c
+            for c in self.graph.connections
+            if not (
+                c.source_node_id == source.core_port.node_id
+                and c.source_port == source.core_port.spec.name
+                and c.target_node_id == target.core_port.node_id
+                and c.target_port == target.core_port.spec.name
+            )
+        ]
+        self.executor.cache.clear()
+        source.ui_node.sync_port_widgets()
+        target.ui_node.sync_port_widgets()
 
     def can_connect(self, source_port: UIPort, target_port: UIPort) -> bool:
         source_node_id = source_port.ui_node.core_node.id
@@ -96,100 +179,6 @@ class Coordinator:
         if self._input_already_connected(target_node_id, target_name):
             return False
         return True
-
-    def _connection_exists(
-        self,
-        source_node_id: str,
-        source_port: str,
-        target_node_id: str,
-        target_port: str,
-    ) -> bool:
-        for connection in self.graph.connections:
-            if (
-                connection.source_node_id == source_node_id
-                and connection.source_port == source_port
-                and connection.target_node_id == target_node_id
-                and connection.target_port == target_port
-            ):
-                return True
-        return False
-
-    def _input_already_connected(self, target_node_id: str, target_port: str) -> bool:
-        for connection in self.graph.connections:
-            if (
-                connection.target_node_id == target_node_id
-                and connection.target_port == target_port
-            ):
-                return True
-        return False
-
-    def connect_ports(self, source: UIPort, target: UIPort) -> None:
-        self.graph.connect(
-            source.core_port.node_id,
-            source.core_port.spec.name,
-            target.core_port.node_id,
-            target.core_port.spec.name,
-        )
-
-        connection = UIConnection(source, target)
-        self.canvas.scene().addItem(connection)
-        source.add_connection(connection)
-        target.add_connection(connection)
-        source.ui_node.sync_port_widgets()
-        target.ui_node.sync_port_widgets()
-
-    def disconnect_ports(self, source: UIPort, target: UIPort) -> None:
-        self.graph.connections = [
-            c
-            for c in self.graph.connections
-            if not (
-                c.source_node_id == source.core_port.node_id
-                and c.source_port == source.core_port.spec.name
-                and c.target_node_id == target.core_port.node_id
-                and c.target_port == target.core_port.spec.name
-            )
-        ]
-        self.executor.cache.clear()
-        source.ui_node.sync_port_widgets()
-        target.ui_node.sync_port_widgets()
-
-    def remove_node(self, node_id: str) -> None:
-        binding = self.node_bindings.pop(node_id, None)
-        if binding is None:
-            return
-
-        self.graph.connections = [
-            c
-            for c in self.graph.connections
-            if c.source_node_id != node_id and c.target_node_id != node_id
-        ]
-        self.graph.nodes.pop(node_id, None)
-
-        for port in binding.ui_node.get_all_ports():
-            self.port_index.pop(port, None)
-
-        self.canvas.remove_node(binding.ui_node)
-
-    def clear(self) -> None:
-        for node_id in list(self.node_bindings.keys()):
-            self.remove_node(node_id)
-        self.graph.connections.clear()
-        self.graph.nodes.clear()
-        self.executor.cache.clear()
-        self.canvas.clear_pending_connection()
-
-    def update_node_param(self, node_id: str, name: str, value) -> None:
-        node = self.graph.nodes[node_id]
-        node.params[name] = value
-        self.executor.cache.clear()
-
-    def evaluate_node(self, node: CoreNode) -> dict | None:
-        self.executor.cache.clear()
-        result = self.executor.evaluate_node(
-            node.id
-        )  # TODO: Change evaluate_node to use CoreNode instead of ID
-        self._refresh_all_nodes()
-        return result
 
     def add_repeated_input(self, node: CoreNode) -> None:
         repeated = node.definition.repeated_inputs
@@ -245,32 +234,6 @@ class Coordinator:
         self.executor.cache.clear()
         port.ui_node.remove_port(port)
 
-    def _build_ui_node(self, node: CoreNode, pos: QPointF) -> UINode:
-        ui_node = UINode(
-            self.canvas, node, pos.x(), pos.y(), name=node.definition.title
-        )
-        self.canvas.scene().addItem(ui_node)
-        self.canvas.nodes.append(ui_node)
-
-        for port in list(ui_node.inputs):
-            ui_node.remove_port(port)
-        for port in list(ui_node.outputs):
-            ui_node.remove_port(port)
-
-        for core_port in node.inputs:
-            port = ui_node.add_port("input", core_port)
-            port.name = core_port.spec.name
-
-        for core_port in node.outputs:
-            port = ui_node.add_port("output", core_port)
-            port.name = core_port.spec.name
-
-        return ui_node
-
-    def _default_params(self, definition: Operation) -> dict:
-        specs = getattr(definition, "params", [])
-        return {spec.name: spec.default for spec in specs}
-
     def set_port_value(self, port: UIPort, raw_value: str) -> None:
         core_port = port.core_port
 
@@ -325,130 +288,143 @@ class Coordinator:
         self.executor.cache.clear()
         port.ui_node.sync_port_widgets()
 
-    def _refresh_all_nodes(self) -> None:
-        for binding in self.node_bindings.values():
-            binding.ui_node.sync_port_widgets()
+    def _connect_core_ports(self, source: UIPort, target: UIPort) -> None:
+        self.graph.connect(
+            source.core_port.node_id,
+            source.core_port.spec.name,
+            target.core_port.node_id,
+            target.core_port.spec.name,
+        )
+
+    def _connect_ui_ports(self, source: UIPort, target: UIPort) -> None:
+        connection = UIConnection(source, target)
+        self.canvas.scene().addItem(connection)
+        source.add_connection(connection)
+        target.add_connection(connection)
+        source.ui_node.sync_port_widgets()
+        target.ui_node.sync_port_widgets()
+
+    def _connection_exists(
+        self,
+        source_node_id: str,
+        source_port: str,
+        target_node_id: str,
+        target_port: str,
+    ) -> bool:
+        for connection in self.graph.connections:
+            if (
+                connection.source_node_id == source_node_id
+                and connection.source_port == source_port
+                and connection.target_node_id == target_node_id
+                and connection.target_port == target_port
+            ):
+                return True
+        return False
+
+    def _input_already_connected(self, target_node_id: str, target_port: str) -> bool:
+        for connection in self.graph.connections:
+            if (
+                connection.target_node_id == target_node_id
+                and connection.target_port == target_port
+            ):
+                return True
+        return False
 
     def _find_ui_port(self, ports: list[UIPort], port_name: str) -> UIPort | None:
         for port in ports:
             if port.core_port.spec.name == port_name:
                 return port
         return None
+    #endregion
 
-    # === Subgraphs ===
+    #region SUBGRAPHS
 
-    # === Save/load and (de)serialization ===
+    #endregion
+
+    #region SAVE/LOAD AND (DE)SERIALIZATION
+    def build_document_from_editor(self) -> GraphDocument:
+        return GraphDocument(
+            nodes=[
+                NodeDocument.from_core(
+                    binding,
+                    input_values=self._saved_input_values_for_node(binding.core_node),
+                )
+                for node_id, binding in self.node_bindings.items()
+            ],
+            connections=[
+                ConnectionDocument.from_core(connection)
+                for connection in self.graph.connections
+            ],
+        )
+
     def save_to_file(self, path: str) -> None:
+        doc = self.build_document_from_editor()
+
         with open(path, "w", encoding="utf-8") as file:
-            json.dump(self.serialize_graph(self.graph), file, indent=2)
+            json.dump(doc.to_dict(), file, indent=2)
 
     def load_from_file(self, path: str) -> None:
         with open(path, "r", encoding="utf-8") as file:
             data = json.load(file)
-        self.load_graph(data)
 
-    def serialize_graph(self, graph: Graph) -> dict[str, Any]:
-        return {
-            "nodes": [
-                self._serialize_node(binding.core_node)
-                for binding in self.node_bindings.values()
-            ],
-            "connections": [
-                self._serialize_connection(connection)
-                for connection in self.graph.connections
-            ],
-        }
+        doc = GraphDocument.from_dict(data)
+        self.load_document_into_editor(doc)
 
-    def load_graph(self, data: dict[str, Any]) -> None:
+    def load_document_into_editor(self, doc: GraphDocument) -> None:
         self.clear()
 
-        for node_data in data.get("nodes", []):
-            node = self._create_node(
-                node_data["type_id"],
-                QPointF(node_data.get("x", 0), node_data.get("y", 0)),
-                node_id=node_data["id"],
-                state=node_data.get("state", {}),
-                params=node_data.get("params", {}),
-                ui_name=node_data.get("name"),
+        self.graph = doc.to_graph()
+        self.executor = Executor(self.graph)
+
+        for node_doc in doc.nodes:
+            core_node = self.graph.nodes[node_doc.id]
+
+            ui_node = self._build_ui_node(
+                core_node,
+                QPointF(node_doc.x, node_doc.y),
+                node_doc.name,
             )
 
-            input_values = node_data.get("input_values", {})
-            for port_name, value in input_values.items():
-                port = node.get_input_port(port_name)
-                if port is not None:
-                    if isinstance(value, str):
-                        port.value = self.value_parser.parse(port.spec.data_type, value)
-                    else:
-                        port.value = value
+            self.node_bindings[node_doc.id] = NodeBinding(
+                core_node=core_node,
+                ui_node=ui_node,
+            )
 
-            binding = self.node_bindings[node.id]
-            binding.ui_node.sync_port_widgets()
+        for connection_doc in doc.connections:
+            source_binding = self.node_bindings.get(connection_doc.source_node_id)
+            target_binding = self.node_bindings.get(connection_doc.target_node_id)
 
-        for connection_data in data.get("connections", []):
-            source_binding = self.node_bindings.get(connection_data["source_node_id"])
-            target_binding = self.node_bindings.get(connection_data["target_node_id"])
             if source_binding is None or target_binding is None:
                 continue
 
-            source_port = self._find_ui_port(
-                source_binding.ui_node.outputs, connection_data["source_port"]
+            source_ui_port = self._find_ui_port(
+                source_binding.ui_node.outputs,
+                connection_doc.source_port,
             )
-            target_port = self._find_ui_port(
-                target_binding.ui_node.inputs, connection_data["target_port"]
+            target_ui_port = self._find_ui_port(
+                target_binding.ui_node.inputs,
+                connection_doc.target_port,
             )
-            if source_port is None or target_port is None:
+
+            if source_ui_port is None or target_ui_port is None:
                 continue
 
-            self.connect_ports(source_port, target_port)
+            self._connect_ui_ports(source_ui_port, target_ui_port)
 
         self._refresh_all_nodes()
 
-    def _serialize_node(self, node: CoreNode) -> dict[str, Any]:
-        binding = self.node_bindings[node.id]
-        ui_node = binding.ui_node
-        local_input_values = {
-            port.spec.name: self._serialize_value(port.value)
-            for port in node.inputs
-            if port.spec.editable
-            and not self._input_already_connected(node.id, port.spec.name)
-        }
+    def _saved_input_values_for_node(self, node: CoreNode) -> dict[str, Any]:
+        saved_inputs: dict[str, Any] = {}
 
-        return {
-            "id": node.id,
-            "type_id": node.definition.type_id,
-            "name": ui_node.name,
-            "x": ui_node.pos().x(),
-            "y": ui_node.pos().y(),
-            "state": node.state,
-            "params": node.params,
-            "input_values": local_input_values,
-        }
+        for port in node.inputs:
+            if not port.spec.editable:
+                continue
+            if self._input_already_connected(node.id, port.spec.name):
+                continue
 
-    def _serialize_connection(self, connection: CoreConnection) -> dict[str, Any]:
-        return {
-            "source_node_id": connection.source_node_id,
-            "source_port": connection.source_port,
-            "target_node_id": connection.target_node_id,
-            "target_port": connection.target_port,
-        }
+            saved_inputs[port.spec.name] = self._serialize_value(port.value)
 
-    def _serialize_port_spec(self, port: PortSpec) -> dict[str, Any]:
-        return {
-            "name": port.name,
-            "data_type": port.data_type,
-            "default": self._serialize_value(port.default),
-            "editable": port.editable,
-            "hideable": port.hideable,
-        }
-
-    def _deserialize_port_spec(self, data: dict[str, Any]) -> PortSpec:
-        return PortSpec(
-            name=data["name"],
-            data_type=data["data_type"],
-            default=data.get("default"),
-            editable=data.get("editable", False),
-            hideable=data.get("hideable", False),
-        )
+        return saved_inputs
 
     def _serialize_value(self, value: Any) -> Any:
         if value is None or isinstance(value, (str, int, float, bool)):
@@ -458,3 +434,4 @@ class Coordinator:
         if isinstance(value, dict):
             return {key: self._serialize_value(item) for key, item in value.items()}
         raise TypeError(f"Cannot serialize value of type {type(value).__name__}")
+    #endregion

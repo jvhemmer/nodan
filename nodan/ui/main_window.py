@@ -49,7 +49,7 @@ class MainWindow(QMainWindow):
         self.subgraph_add_action = subgraph_menu.addAction("Add...")
         #TODO: Show all loaded subgraphs as a submenu of "Add..."
 
-        self.subgraph_new_from_file_action.triggered.connect()
+        # self.subgraph_new_from_file_action.triggered.connect()
 
     ##region FILE MENU ACTIONS
     def _new_file(self) -> None:

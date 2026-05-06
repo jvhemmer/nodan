@@ -1,20 +1,12 @@
-from dataclasses import dataclass
 from typing import Any
 
 from nodan.core.node_system import CoreConnection, CoreNode
 
-@dataclass
-class NodeLayout:
-    x: float
-    y: float
-    name: str | None = None
 
 class Graph:
     def __init__(self):
         self.nodes: dict[str, CoreNode] = {}
         self.connections: list[CoreConnection] = []
-
-        self.node_layout: dict[str, NodeLayout] = {}
 
     def add_node(self, node: CoreNode):
         self.nodes[node.id] = node
