@@ -50,7 +50,7 @@ class Canvas(QGraphicsView):
 
         self._last_context_pos = QPoint()
 
-    # === Nodes ===
+    #region NODES
     def remove_node(self, node: UINode):
         if node in self.nodes:
             self.nodes.remove(node)
@@ -61,8 +61,9 @@ class Canvas(QGraphicsView):
     def add_node_at_context_pos(self, node_type: str):
         scene_pos = self.mapToScene(self._last_context_pos)
         self.add_node_requested.emit(node_type, scene_pos)
+    #endregion
 
-    # === Connections ===
+    #region CONNECTIONS
     def fulfill_pending_connection(self, connection: UIConnection, target: UIPort):
         if self.pending_source_port:
             source = self.pending_source_port
@@ -104,7 +105,9 @@ class Canvas(QGraphicsView):
             self.scene().removeItem(self.pending_connection)
             self.clear_pending_connection()
 
-    # === Ports ===
+    # endregion
+
+    #region PORTS
     def handle_port_click(self, port: UIPort):
         if self.pending_connection is None:
             # If there's no pending connection
@@ -134,6 +137,9 @@ class Canvas(QGraphicsView):
         if not self.coordinator.can_connect(source, target):
             return
 
+        if not source:
+            return
+
         self.pending_connection.delete()
         self.clear_pending_connection()
         self.coordinator.connect_ports(source, target)
@@ -144,8 +150,9 @@ class Canvas(QGraphicsView):
                 if port.show_name != value:
                     port.show_name = value
                     port.update()
+    #endregion
 
-    # === Key/Mouse Events ===
+    #region KEY/MOUSE EVENTS
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             item = self.itemAt(event.pos())
@@ -268,7 +275,9 @@ class Canvas(QGraphicsView):
             event.accept()
             return
         super().keyReleaseEvent(event)
+    #endregion
 
-    # === Helpers ===
+    #region HELPERS
     def get_cursor_pos(self) -> QPointF:
         return self.mapToScene(self.mapFromGlobal(QCursor.pos()))
+    #endregion

@@ -93,15 +93,6 @@ class Operation:
                 raise ValueError(f"Duplicate output port {port.name}")
             seen_outputs.add(port.name)
 
-
-@dataclass
-class CorePort:
-    node_id: str
-    kind: str
-    spec: PortSpec
-    value: Any = None
-
-
 @dataclass
 class CoreNode:
     id: str
@@ -135,6 +126,12 @@ class CoreNode:
                 return port
         return None
 
+@dataclass
+class CorePort:
+    node_id: str
+    kind: str
+    spec: PortSpec
+    value: Any = None
 
 @dataclass
 class CoreConnection:
