@@ -179,7 +179,7 @@ class Canvas(QGraphicsView):
         menu = QMenu()
 
         for type_id, op_cls in Operation.registry.items():
-            action = menu.addAction(f"Add {op_cls.title} node")
+            action = menu.addAction(f"Add {op_cls.name} node")
             action.triggered.connect(lambda checked=False,node_type=type_id: self.add_node_at_context_pos(node_type))
 
         menu.exec(event.globalPos())

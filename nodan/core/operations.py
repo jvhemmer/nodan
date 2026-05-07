@@ -12,7 +12,7 @@ from nodan.core.node_system import Operation, PortSpec, RepeatedInputSpec
 
 class ConstantValue(Operation):
     type_id = "value.constant"
-    title = "Constant"
+    name = "Constant"
     category = "Values"
 
     input_spec = [PortSpec("value", "data", editable=True)]
@@ -24,7 +24,7 @@ class ConstantValue(Operation):
 
 class DebugLog(Operation):
     type_id = "debug.log"
-    title = "Debug Log"
+    name = "Debug Log"
     category = "Debug"
 
     input_spec = [PortSpec("value", "data")]
@@ -51,7 +51,7 @@ class ElementWiseOperation(Operation):
     def evaluate(self, inputs: dict[str, Any]) -> dict[str, Any]:
         dfs = [df for df in inputs.values() if df is not None]
         if not dfs:
-            raise ValueError(f"{self.title} requires at least one dataframe.")
+            raise ValueError(f"{self.name} requires at least one dataframe.")
 
         result = dfs[0]
         for df in dfs[1:]:
@@ -65,7 +65,7 @@ class ElementWiseSum(Operation):
 
 class MultiplyValue(Operation):
     type_id = "value.multiply"
-    title = "Multiply"
+    name = "Multiply"
     category = "Basic operation"
 
     input_spec = [PortSpec("value", "data")]
@@ -93,7 +93,7 @@ class MultiplyValue(Operation):
 
 class ReadCSV(Operation):
     type_id = "file.read_csv"
-    title = "Read CSV"
+    name = "Read CSV"
     category = "Files"
 
     input_spec = [
@@ -122,7 +122,7 @@ class ReadCSV(Operation):
 
 class FilterColumns(Operation):
     type_id = "filter.dataframe"
-    title = "Filter columns"
+    name = "Filter columns"
     category = "DataFrame"
 
     input_spec = [PortSpec("dataframe", "dataframe")]
@@ -151,7 +151,7 @@ class FilterColumns(Operation):
 
 class Find(Operation):
     type_id = "logic.find"
-    title = "Find"
+    name = "Find"
     category = "Logic"
 
     input_spec = [
@@ -217,7 +217,7 @@ class Find(Operation):
 
 class PlotXY(Operation):
     type_id = "plot.xy"
-    title = "Plot XY"
+    name = "Plot XY"
     category = "Plot"
 
     input_spec = [
@@ -325,7 +325,7 @@ class PlotXY(Operation):
 
 class RawCode(Operation):
     type_id = "code.execute"
-    title = "Execute code"
+    name = "Execute code"
     category = "Code"
 
     input_spec = [PortSpec("code", "text", editable=True)]

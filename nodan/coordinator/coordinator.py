@@ -112,7 +112,7 @@ class Coordinator:
 
     def _build_ui_node(self, node: CoreNode, pos: QPointF, name: str | None = None) -> UINode:
         ui_node = UINode(
-            self.canvas, node, pos.x(), pos.y(), name=node.definition.title
+            self.canvas, node, pos.x(), pos.y(), name=node.definition.name
         )
         self.canvas.scene().addItem(ui_node)
         self.canvas.nodes.append(ui_node)

@@ -38,7 +38,7 @@ class Operation:
     registry: ClassVar[dict[str, type["Operation"]]] = {}
 
     type_id: ClassVar[str] = ""
-    title: ClassVar[str] = ""
+    name: ClassVar[str] = ""
     category: ClassVar[str] = "General"
 
     input_spec: ClassVar[list[PortSpec]] = []
