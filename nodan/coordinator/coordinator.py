@@ -145,16 +145,12 @@ class Coordinator:
         self._connect_ui_ports(source, target)
 
     def disconnect_ports(self, source: UIPort, target: UIPort) -> None:
-        self.graph.connections = [
-            c
-            for c in self.graph.connections
-            if not (
-                c.source_node_id == source.core_port.node_id
-                and c.source_port == source.core_port.spec.name
-                and c.target_node_id == target.core_port.node_id
-                and c.target_port == target.core_port.spec.name
-            )
-        ]
+        self.graph.disconnect(
+            source.core_port.node_id,
+            source.core_port.spec.name,
+            target.core_port.node_id,
+            target.core_port.spec.name,
+        )
         self.executor.cache.clear()
         source.ui_node.sync_port_widgets()
         target.ui_node.sync_port_widgets()
@@ -172,11 +168,11 @@ class Coordinator:
             return False
         if source_node_id == target_node_id:
             return False
-        if self._connection_exists(
-            source_node_id, source_name, target_node_id, target_name
+        if self.graph.connection_exists(
+                source_node_id, source_name, target_node_id, target_name
         ):
             return False
-        if self._input_already_connected(target_node_id, target_name):
+        if self.graph.input_port_is_connected(target_node_id, target_name):
             return False
         return True
 
@@ -304,32 +300,6 @@ class Coordinator:
         source.ui_node.sync_port_widgets()
         target.ui_node.sync_port_widgets()
 
-    def _connection_exists(
-        self,
-        source_node_id: str,
-        source_port: str,
-        target_node_id: str,
-        target_port: str,
-    ) -> bool:
-        for connection in self.graph.connections:
-            if (
-                connection.source_node_id == source_node_id
-                and connection.source_port == source_port
-                and connection.target_node_id == target_node_id
-                and connection.target_port == target_port
-            ):
-                return True
-        return False
-
-    def _input_already_connected(self, target_node_id: str, target_port: str) -> bool:
-        for connection in self.graph.connections:
-            if (
-                connection.target_node_id == target_node_id
-                and connection.target_port == target_port
-            ):
-                return True
-        return False
-
     def _find_ui_port(self, ports: list[UIPort], port_name: str) -> UIPort | None:
         for port in ports:
             if port.core_port.spec.name == port_name:
@@ -338,6 +308,11 @@ class Coordinator:
     #endregion
 
     #region SUBGRAPHS
+    def load_subgraph_from_file(self, path: str) -> None:
+        with open(path, "r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        doc = GraphDocument.from_dict(data)
 
     #endregion
 
@@ -419,7 +394,7 @@ class Coordinator:
         for port in node.inputs:
             if not port.spec.editable:
                 continue
-            if self._input_already_connected(node.id, port.spec.name):
+            if self.graph.input_port_is_connected(node.id, port.spec.name):
                 continue
 
             saved_inputs[port.spec.name] = self._serialize_value(port.value)
